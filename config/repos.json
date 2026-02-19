@@ -1,0 +1,11 @@
+{
+  "defaultAgent": "backend-dev",
+  "globalLimit": 200,
+  "repos": {
+    "miller46/jm-api": {
+      "enabled": true,
+      "priority": 0,
+      "max_per_run": 50
+    }
+  }
+}

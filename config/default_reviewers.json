@@ -1,0 +1,21 @@
+{
+  "_comment": "DEFAULT reviewer config. Per-repo overrides: repos/{owner}/{repo}/config/reviewers.json. Override replaces the entire required_reviewers list (no merge).",
+  "required_reviewers": [
+    {
+      "id": "code-snob",
+      "agent": "code-snob",
+      "gh_config_dir": "~/.openclaw/agents/code-snob/agent",
+      "template": "prompts/review/code_snob.md",
+      "timeout": 900,
+      "focus": "style, best practices, and potential bugs"
+    },
+    {
+      "id": "architect",
+      "agent": "architect",
+      "gh_config_dir": "~/.openclaw/agents/architect/agent",
+      "template": "prompts/review/architect.md",
+      "timeout": 900,
+      "focus": "design, security, and maintainability"
+    }
+  ]
+}

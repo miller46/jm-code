@@ -1,0 +1,55 @@
+{
+  "_comment": "DEFAULT action dispatch configuration. Per-repo overrides: repos/{owner}/{repo}/config/workflow.json. Per-repo files are deep-merged over these defaults (action-level granularity).",
+  "actions": {
+    "needs_review": {
+      "type": "multi_agent_review",
+      "dispatch_type": "review",
+      "lock_duration_minutes": 20
+    },
+    "needs_fix": {
+      "type": "single_agent",
+      "dispatch_type": "fix",
+      "agent_selector": "determine_dev_agent",
+      "template": "prompts/dev/fix_pr.md",
+      "lock_duration_minutes": 60,
+      "timeout": 1800
+    },
+    "needs_dev": {
+      "type": "single_agent",
+      "dispatch_type": null,
+      "agent_selector": "determine_dev_agent",
+      "template": "prompts/dev/implement_issue.md",
+      "lock_duration_minutes": 60,
+      "timeout": 3600
+    },
+    "needs_conflict_resolution": {
+      "type": "single_agent",
+      "dispatch_type": "conflict",
+      "agent_selector": "determine_dev_agent",
+      "template": "prompts/dev/resolve_conflicts.md",
+      "lock_duration_minutes": 30,
+      "timeout": 1800
+    },
+    "ready_to_merge": {
+      "type": "merge_pr",
+      "dispatch_type": "merge",
+      "lock_duration_minutes": 5,
+      "merge_strategy": "squash",
+      "delete_branch": true,
+      "gh_config_dir": "~/.openclaw/agents/manager/agent"
+    }
+  },
+  "agent_routing": {
+    "frontend_keywords": [
+      "frontend", "ui", "react", "vue", "css", "component",
+      "page", "signup", "login", "dashboard", "html", "js"
+    ],
+    "frontend_agent": "frontend-dev",
+    "backend_keywords": [
+      "backend", "api", "endpoint", "database", "db", "model",
+      "schema", "auth", "jwt", "server", "ci", "workflow"
+    ],
+    "backend_agent": "backend-dev",
+    "default_agent": "backend-dev"
+  }
+}
