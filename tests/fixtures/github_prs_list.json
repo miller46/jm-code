@@ -1,0 +1,47 @@
+[
+    {
+        "author": {
+            "id": "MDQ6VXNlcjQ3MjQxOTY=",
+            "is_bot": false,
+            "login": "miller46",
+            "name": ""
+        },
+        "body": "## Summary\n- enforce RBAC authorization on /bots CRUD write operations\n- add reusable authorization dependency helpers for admin/manager checks\n- add tests covering role-based access behavior for bots endpoints\n\n## Testing\n- .venv/bin/pytest -q\n\nCloses #58\n",
+        "createdAt": "2026-02-18T01:23:06Z",
+        "headRefName": "feature/issue-58-rbac-bots",
+        "number": 60,
+        "state": "CLOSED",
+        "title": "[backend] Add RBAC/Authorization to /bots CRUD endpoints",
+        "updatedAt": "2026-02-18T01:42:54Z"
+    },
+    {
+        "author": {
+            "id": "MDQ6VXNlcjQ3MjQxOTY=",
+            "is_bot": false,
+            "login": "miller46",
+            "name": ""
+        },
+        "body": "## Summary\n- add `require_admin` authorization dependency in API deps\n- enforce admin-only authorization on `/api/v1/bots` write endpoints (POST/PUT/DELETE)\n- add RBAC tests for unauthenticated, non-admin, and admin access paths\n- update test fixtures to provide authenticated admin client by default and keep explicit unauth coverage\n- document admin-only bot write endpoints in README\n\n## Testing\n- `.venv/bin/pytest -q tests/test_auth.py tests/test_bots_rbac.py`\n- `.venv/bin/pytest -q tests/test_bots.py tests/test_create_bot.py tests/test_update_bot.py tests/test_delete_bot.py tests/test_edit_page_integration.py tests/test_update_validation.py`\n\nCloses #58\n",
+        "createdAt": "2026-02-18T01:07:02Z",
+        "headRefName": "feat/issue-58-bots-rbac",
+        "number": 59,
+        "state": "MERGED",
+        "title": "Add RBAC authorization for bots CRUD write operations",
+        "updatedAt": "2026-02-18T03:03:18Z"
+    },
+    {
+        "author": {
+            "id": "MDQ6VXNlcjQ3MjQxOTY=",
+            "is_bot": false,
+            "login": "miller46",
+            "name": ""
+        },
+        "body": "## Summary\nUpdates README.md to reflect current application capabilities and developer workflows.\n\n## What changed\n- Updated project overview to include authentication, observability, and admin frontend\n- Added quickstart section for new developers\n- Added explicit integration test commands (including `-o addopts=''` to override default marker filter)\n- Added URL map/routing section for admin pages, API routes, docs, and metrics\n- Added local development environment variable documentation (required + common + auth + observability)\n- Kept/updated observability stack startup command and local URLs\n\n## Issue\nCloses #53\n",
+        "createdAt": "2026-02-17T23:02:35Z",
+        "headRefName": "feature/issue-53-readme-update",
+        "number": 57,
+        "state": "MERGED",
+        "title": "docs: update README for current platform capabilities (issue #53)",
+        "updatedAt": "2026-02-17T23:05:31Z"
+    }
+]

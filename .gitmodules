@@ -1,0 +1,3 @@
+[submodule "jm-bot"]
+	path = jm-bot
+	url = https://github.com/miller46/jm-bot.git

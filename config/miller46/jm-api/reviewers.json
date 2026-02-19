@@ -1,0 +1,64 @@
+{
+  "_comment": "Reviewer Configuration for miller46/jm-api. Inherits from global defaults, customized for this FastAPI backend repo.",
+  "reviewers": [
+    {
+      "name": "code-snob",
+      "agent": "code-snob",
+      "enabled": true,
+      "weight": 1,
+      "prompt": "You are reviewing Python backend code for a FastAPI + SQLAlchemy project. Focus on: Python PEP 8 compliance (100 char line length), type hints (mypy strict mode), FastAPI patterns (dependency injection, async/await), SQLAlchemy session handling and eager loading patterns, naming (descriptive but concise, verb-led function names), error handling (explicit over implicit, early returns), testing (pytest patterns, fixtures, parametrize). Be thorough but constructive. Suggest specific code changes with line numbers."
+    },
+    {
+      "name": "architect",
+      "agent": "architect",
+      "enabled": true,
+      "weight": 2,
+      "prompt": "You are reviewing API architecture for a FastAPI-based backend service. Focus on: RESTful API design (proper HTTP verbs, status codes), endpoint naming consistency, authentication/authorization patterns (JWT, OAuth), database design (schema decisions, relationship patterns), error response consistency across the API, dependency management and service boundaries, performance (query optimization, caching strategy), observability (logging, metrics, tracing). Consider the existing codebase patterns. Suggest concrete alternatives."
+    }
+  ],
+  "approval_rules": {
+    "mode": "majority",
+    "min_approvals": 2,
+    "required_reviewers": [],
+    "veto_powers": []
+  },
+  "triggers": [
+    {
+      "event": "pr_created",
+      "source_agent": "backend-dev",
+      "reviewers": ["code-snob", "architect"]
+    },
+    {
+      "event": "manual_review_request",
+      "reviewers": ["code-snob", "architect"]
+    }
+  ],
+  "repo_specific": {
+    "framework": "fastapi",
+    "database": "postgresql",
+    "language": "python",
+    "critical_paths": [
+      "**/auth/**",
+      "**/models/**",
+      "**/api/routes/**",
+      "**/core/config.py"
+    ]
+  },
+  "github": {
+    "account": "reviewer-bot",
+    "post_comments": true,
+    "request_changes": true,
+    "comment_style": "individual"
+  },
+  "review_behavior": {
+    "parallel": true,
+    "re_review_changed_files_only": true,
+    "max_review_time_minutes": 10
+  },
+  "review_loop": {
+    "enabled": true,
+    "max_iterations": 5,
+    "auto_fix": false,
+    "fix_prompt": "Address the review feedback for this PR. Make minimal changes to fix the issues. Run tests before committing. Report back exactly what you changed."
+  }
+}

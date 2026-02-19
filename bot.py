@@ -1,0 +1,44 @@
+import sys
+from jm_bot.base_bot.remote_config_bots.redis_remote_bot import BotWithRedisRemoteConfig
+from github.get_open_prs import PRQueueClient
+
+
+class Bot(BotWithRedisRemoteConfig):
+
+    def on_startup(self):
+        self.logging.info("Startup")
+        pass
+
+    def on_run_loop(self):
+        self.logging.info("Loop Start")
+
+        self.logging.info("Start PR reviews")
+        with PRQueueClient(db_path="workflow.db") as client:
+            review = client.query(action="needs_review", limit=10)
+            print(f"Found {review['counts']['returned']} PRs needing review")
+            for pr in review["prs"]:
+                self.logging.info(f"Init review for PR #{pr['prNumber']}")
+
+            fixes = client.query(action="needs_fix", limit=10)
+            print(f"Found {review['counts']['returned']} PRs needing fixes")
+            for pr in fixes["prs"]:
+                self.logging.info(f"Init fix for PR #{pr['prNumber']}")
+
+            conflicts = client.query(action="needs_conflict_resolution", limit=10)
+            print(f"Found {review['counts']['returned']} PRs needing conflict resolution")
+            for pr in conflicts["prs"]:
+                self.logging.info(f"Init merge conflict fix for PR #{pr['prNumber']}")
+
+            merges = client.query(action="ready_to_merge", limit=10)
+            print(f"Found {review['counts']['returned']} PRs ready to merge")
+            for pr in merges["prs"]:
+                self.logging.info(f"Init merge for PR #{pr['prNumber']}")
+
+
+    def on_shutdown(self):
+        self.logging.info("Shutdown")
+        pass
+
+
+if __name__ == '__main__':
+    Bot(sys.argv[1:]).main()

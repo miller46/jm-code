@@ -1,0 +1,19 @@
+[
+    {
+        "author": {
+            "id": "MDQ6VXNlcjQ3MjQxOTY=",
+            "is_bot": false,
+            "login": "miller46",
+            "name": ""
+        },
+        "body": "## User Story\nAs an operator, I want refresh token revocation to persist across restarts and work in multi-instance deployments so that logout/revocation actually invalidates sessions reliably.\n\n## Acceptance Criteria\n- [ ] Replace in-memory denylist with persistent session store (Redis or PostgreSQL)\n- [ ] Create session/token table with fields: token_jti, user_id, issued_at, expires_at, revoked_at, rotated_from_jti (optional)\n- [ ] Implement TTL/automatic cleanup for expired tokens\n- [ ] Track token rotation (link new refresh token to old one it replaced)\n- [ ] Update  to mark tokens as revoked in persistent store\n- [ ] Update  to check revocation status before issuing new tokens\n- [ ] Update middleware to query persistent store for revocation checks\n- [ ] Add migration script for database schema changes\n- [ ] Performance: revocation check must add <10ms latency per request\n- [ ] Documentation: update README with session store configuration\n\n## Technical Notes\n- **Redis option:** Use Redis with TTL for automatic expiration, good for high-performance scenarios\n- **PostgreSQL option:** Use table with  + periodic cleanup job, simpler if already using Postgres\n- **Hybrid option:** Redis for hot revocation checks, Postgres for audit/history\n- **JTI (JWT ID) usage:** Each token needs unique jti claim for revocation tracking\n- **Rotation tracking:** Store  to detect replay attacks with old tokens\n- **Environment variables:** Add  (Redis connection string or DB URL)\n\n## Assignment\nType: backend \u2014 will be handled by backend-dev agent\n\n## Size\nM (2\u20135 days)",
+        "closed": false,
+        "closedAt": null,
+        "createdAt": "2026-02-18T16:31:59Z",
+        "labels": [],
+        "number": 61,
+        "state": "OPEN",
+        "title": "[backend] Replace in-memory refresh-token revocation with persistent session store",
+        "updatedAt": "2026-02-18T16:31:59Z"
+    }
+]

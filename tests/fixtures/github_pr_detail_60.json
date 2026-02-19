@@ -1,0 +1,34 @@
+{
+    "author": {
+        "id": "MDQ6VXNlcjQ3MjQxOTY=",
+        "is_bot": false,
+        "login": "miller46",
+        "name": ""
+    },
+    "body": "## Summary\n- enforce RBAC authorization on /bots CRUD write operations\n- add reusable authorization dependency helpers for admin/manager checks\n- add tests covering role-based access behavior for bots endpoints\n\n## Testing\n- .venv/bin/pytest -q\n\nCloses #58\n",
+    "createdAt": "2026-02-18T01:23:06Z",
+    "headRefOid": "13195623937cb0527d8f9604e04269bf747c95c2",
+    "mergeStateStatus": "UNKNOWN",
+    "mergeable": "UNKNOWN",
+    "number": 60,
+    "reviews": [
+        {
+            "id": "PRR_kwDORIJs6c7jhYue",
+            "author": {
+                "login": "miller46bot"
+            },
+            "authorAssociation": "COLLABORATOR",
+            "body": "see above",
+            "submittedAt": "2026-02-18T01:30:20Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "CHANGES_REQUESTED",
+            "commit": {
+                "oid": "13195623937cb0527d8f9604e04269bf747c95c2"
+            }
+        }
+    ],
+    "state": "CLOSED",
+    "title": "[backend] Add RBAC/Authorization to /bots CRUD endpoints",
+    "updatedAt": "2026-02-18T01:42:54Z"
+}

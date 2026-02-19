@@ -1,0 +1,26 @@
+{
+    "number": 200,
+    "title": "Implement auth feature",
+    "state": "MERGED",
+    "headRefOid": "aaa111bbb222ccc333ddd444eee555fff66677788",
+    "mergeable": "UNKNOWN",
+    "mergeStateStatus": "UNKNOWN",
+    "reviews": [
+        {
+            "author": {"login": "code-snob"},
+            "state": "APPROVED",
+            "commit": {"oid": "aaa111bbb222ccc333ddd444eee555fff66677788"},
+            "body": "LGTM.",
+            "submittedAt": "2026-02-18T12:00:00Z"
+        },
+        {
+            "author": {"login": "architect"},
+            "state": "APPROVED",
+            "commit": {"oid": "aaa111bbb222ccc333ddd444eee555fff66677788"},
+            "body": "LGTM.",
+            "submittedAt": "2026-02-18T12:01:00Z"
+        }
+    ],
+    "createdAt": "2026-02-18T11:00:00Z",
+    "updatedAt": "2026-02-18T13:00:00Z"
+}

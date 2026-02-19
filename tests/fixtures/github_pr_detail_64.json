@@ -1,0 +1,74 @@
+{
+    "author": {
+        "id": "MDQ6VXNlcjQ3MjQxOTY=",
+        "is_bot": false,
+        "login": "miller46",
+        "name": ""
+    },
+    "body": "## Summary\\n- harden refresh token rotation with atomic consume semantics to prevent replay/race reuse\\n- add defensive DB error handling across auth login/signup/refresh/logout flows\\n- tighten login payload validation and token payload/session consistency checks\\n- add coverage for malformed payloads, replay containment, collisions, and mismatch edge cases\\n\\nFixes #63.",
+    "createdAt": "2026-02-19T17:21:17Z",
+    "headRefOid": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36",
+    "mergeStateStatus": "CLEAN",
+    "mergeable": "MERGEABLE",
+    "number": 64,
+    "reviews": [
+        {
+            "id": "PRR_kwDORIJs6c7kIbbz",
+            "author": {"login": "miller46bot"},
+            "authorAssociation": "COLLABORATOR",
+            "body": "VERDICT: REQUEST_CHANGES\n\nThanks for the solid hardening work here.\n\n## Blocking architectural/security concern:\n\n**1) Over-broad replay containment revokes all user sessions for non-replay cases**\n\nPlease address item (1) before merge.",
+            "submittedAt": "2026-02-19T17:36:54Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "CHANGES_REQUESTED",
+            "commit": {"oid": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36"}
+        },
+        {
+            "id": "PRR_kwDORIJs6c7kIcFN",
+            "author": {"login": "miller46bot"},
+            "authorAssociation": "COLLABORATOR",
+            "body": "VERDICT: APPROVE\n\n## Code Review: PR #64 - Security Hardening\n\nApprove - The security improvements significantly outweigh the minor issues. Production-ready.",
+            "submittedAt": "2026-02-19T17:37:13Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "APPROVED",
+            "commit": {"oid": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36"}
+        },
+        {
+            "id": "PRR_kwDORIJs6c7kIl2I",
+            "author": {"login": "miller46bot"},
+            "authorAssociation": "COLLABORATOR",
+            "body": "\n\nVERDICT: REQUEST_CHANGES\n\nThanks for the solid hardening work here.\n\nBlocking architectural/security concern:\n\n1) Over-broad replay containment revokes all user sessions for non-replay cases\n\nPlease address item (1) before merge.",
+            "submittedAt": "2026-02-19T17:42:42Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "CHANGES_REQUESTED",
+            "commit": {"oid": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36"}
+        },
+        {
+            "id": "PRR_kwDORIJs6c7kIwcl",
+            "author": {"login": "miller46bot"},
+            "authorAssociation": "COLLABORATOR",
+            "body": "VERDICT: REQUEST_CHANGES\n\nOverall this PR is a strong step forward on auth hardening.\n\nThat said, I recommend requesting changes before merge for long-term correctness and maintainability:\n\n1) Refresh rotation is not transactionally atomic (can strand sessions)\n\nAfter the three blocking items are addressed, this looks close to approvable.",
+            "submittedAt": "2026-02-19T17:49:30Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "CHANGES_REQUESTED",
+            "commit": {"oid": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36"}
+        },
+        {
+            "id": "PRR_kwDORIJs6c7kIweC",
+            "author": {"login": "miller46bot"},
+            "authorAssociation": "COLLABORATOR",
+            "body": "VERDICT: REQUEST_CHANGES\n\n## Security Hardening PR Review\n\n### Must-Fix Issues\n\n1) consume_refresh_token can raise unhandled exception (correctness bug)\n\n### Should-Fix Issues\n\n4) Inconsistent exception handling\n5) Double JWT decode in refresh endpoint",
+            "submittedAt": "2026-02-19T17:49:32Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "CHANGES_REQUESTED",
+            "commit": {"oid": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36"}
+        }
+    ],
+    "state": "OPEN",
+    "title": "[backend] Security hardening: token rotation, error handling, and validation",
+    "updatedAt": "2026-02-19T17:49:32Z"
+}

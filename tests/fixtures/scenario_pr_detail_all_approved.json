@@ -1,0 +1,26 @@
+{
+    "number": 200,
+    "title": "Implement auth feature",
+    "state": "OPEN",
+    "headRefOid": "aaa111bbb222ccc333ddd444eee555fff66677788",
+    "mergeable": "MERGEABLE",
+    "mergeStateStatus": "CLEAN",
+    "reviews": [
+        {
+            "author": {"login": "code-snob"},
+            "state": "APPROVED",
+            "commit": {"oid": "aaa111bbb222ccc333ddd444eee555fff66677788"},
+            "body": "LGTM, clean implementation.",
+            "submittedAt": "2026-02-18T12:00:00Z"
+        },
+        {
+            "author": {"login": "architect"},
+            "state": "APPROVED",
+            "commit": {"oid": "aaa111bbb222ccc333ddd444eee555fff66677788"},
+            "body": "Architecture looks good.",
+            "submittedAt": "2026-02-18T12:01:00Z"
+        }
+    ],
+    "createdAt": "2026-02-18T11:00:00Z",
+    "updatedAt": "2026-02-18T12:01:00Z"
+}

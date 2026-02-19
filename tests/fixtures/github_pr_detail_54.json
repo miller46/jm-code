@@ -1,0 +1,244 @@
+{
+    "author": {
+        "id": "MDQ6VXNlcjQ3MjQxOTY=",
+        "is_bot": false,
+        "login": "miller46",
+        "name": ""
+    },
+    "body": "## Summary\n\nThis PR fixes admin dashboard layout issues and adds a dynamic tables overview view with configurable visibility.\n\n## Changes\n\n### Layout Fixes\n- Fixed menu positioning with flexbox layout to prevent cutoff and overflow\n- Fixed CSS layout issues causing unnecessary scrollbars by using proper flexbox structure\n- Updated body and main container to use flexbox for proper full-height layout\n- Added responsive header with text truncation for long emails\n- Added table-scroll-container inside table-wrapper for proper overflow handling\n\n### Dynamic Tables Overview\n- Replaced hardcoded 'bots' table view with dynamic tables listing from OpenAPI spec\n- Added tables overview page showing ALL database tables extracted from API paths\n- Implemented hide/show toggle for tables with Show All/Hide All buttons\n- Preserves table selection in localStorage and URL params for shareable links\n\n### Responsive Design\n- Header adapts to smaller screens (hides email on mobile)\n- Tables list uses card-style layout with hover effects\n- Table visibility controls use responsive flexbox layout\n\n### Backward Compatibility\n- Kept TABLES constant in app.js for backward compatibility\n- Maintained static anchor element in HTML for test compatibility\n\n## Testing\n- All 515 existing tests pass\n- Tested responsive layout on various screen sizes\n- Verified localStorage persistence of table visibility settings\n- Verified URL param synchronization\n\nCloses #52",
+    "createdAt": "2026-02-17T22:54:26Z",
+    "headRefOid": "1cbd32c767c8df9671885abc364e91c6fadaef52",
+    "mergeStateStatus": "UNKNOWN",
+    "mergeable": "UNKNOWN",
+    "number": 54,
+    "reviews": [
+        {
+            "id": "PRR_kwDORIJs6c7jfuwV",
+            "author": {
+                "login": "miller46bot"
+            },
+            "authorAssociation": "COLLABORATOR",
+            "body": "Thanks for the substantial dashboard/auth work here\u2014layout and styling are much improved, and removing is_admin from UserCreate is a good security fix. I\u2019m requesting changes for a few functional/architecture issues that should be addressed before merge:\n\n1) Dashboard visibility state logic is broken for URL-driven filtering (index.html)\n- In renderTablesList/renderTableVisibilityToggles, visibility is treated as `visibleTables[table] !== false` (default true).\n- But when `?tables=a,b` is provided, `getVisibleTablesFromStorage()` only sets those entries to true and leaves all others undefined.\n- Result: unspecified tables are still shown, so URL selection does not actually filter.\n- Suggested fix: when URL param exists, build a complete visibility map for all discovered tables (true only for listed tables, false for others), or switch semantics to an explicit allow-list mode.\n\n2) \u201cAll tables hidden\u201d state cannot recover via checkbox toggle without full re-render (index.html)\n- `showTablesEmptyState()` replaces `#tables-list` contents with a div.\n- Later `toggleTableVisibility()` tries to mutate `li[data-table=...]`; those nodes no longer exist, so toggling a table back on does not restore list items.\n- Suggested fix: keep table nodes in DOM and toggle visibility classes only, OR in `toggleTableVisibility()` call `renderTablesList(window.dashboardTables, visibleTables)` after any change.\n\n3) Frontend page-init architecture regressed (index.html/create.html/edit.html/table.html + app.js)\n- app.js already centralizes auth header setup via `initAuthHeader()` and page routing from DOMContentLoaded.\n- New inline scripts in create/edit/table duplicate logout binding + `Auth.getCurrentUser()` calls, causing duplicate listeners/network calls and fragmented ownership.\n- index.html also defines another global `initDashboardPage()`, overriding the one in app.js.\n- Suggested fix: move dashboard-specific logic into app.js and remove per-page inline auth scripts so there is a single initialization path.\n\n4) Signup auth-check only inspects localStorage (signup.js)\n- `checkAuth()` reads only `localStorage.getItem('access_token')`.\n- Non-remembered sessions store token in sessionStorage (per app.js), so authenticated users can still see signup page unexpectedly.\n- Suggested fix: check sessionStorage first (or in addition), or reuse shared Auth module logic.\n\nOnce these are fixed, this looks close and I\u2019d be happy to re-review.\n",
+            "submittedAt": "2026-02-17T23:04:32Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "CHANGES_REQUESTED",
+            "commit": {
+                "oid": "3f0e160d727f454993283531af891817ff57e66b"
+            }
+        },
+        {
+            "id": "PRR_kwDORIJs6c7jfvdO",
+            "author": {
+                "login": "miller46bot"
+            },
+            "authorAssociation": "COLLABORATOR",
+            "body": "## Code Review: PR #54\n\nOverall, this is a solid PR that adds authentication, signup functionality, and dynamic table discovery to the admin dashboard. The code is generally well-structured with good security practices. Below are my findings organized by category.\n\n---\n\n### \u2705 **Security - Good Practices Found**\n\n1. **Rate limiting** on auth endpoints (`5 per 15 minutes`) - prevents brute force attacks\n2. **httpOnly cookies** for refresh tokens with `secure` flag in production\n3. **SameSite=Lax** cookie attribute - good CSRF protection\n4. **Password hashing** with bcrypt (implied by `hash_password` import)\n5. **Safe redirect handling** in `getSafeRedirectUrl()` - prevents open redirect vulnerabilities\n6. **XSS protection** via `escapeHtml()` function used consistently\n7. **New users are NOT admins by default** (`is_admin=False`) - good privilege control\n8. **Token expiration checks** with 5-minute buffer before expiry\n\n---\n\n### \u26a0\ufe0f **Security - Areas for Improvement**\n\n#### 1. **XSS Risk in `renderCreateForm` (app.js:1138-1150)**\nThe function uses `innerHTML` with interpolated user-controlled data:\n```javascript\nhtml += '<label for=\"field-' + field + '\">' + field + '</label>';\n```\n**Fix:** Use DOM APIs like in `renderEditForm`, or ensure `escapeHtml()` is applied to `field`.\n\n#### 2. **Missing CSRF Token for State-Changing Operations**\nThe signup form submission doesn't include CSRF protection. While cookies are SameSite=Lax, explicit CSRF tokens provide defense in depth.\n\n#### 3. **Information Leakage in Login Endpoint**\nThe login endpoint returns the same error message for invalid email vs invalid password, which is good. However, the signup endpoint could leak timing information (checking existence before hashing). This is minor given the rate limiting.\n\n#### 4. **Storing Tokens in localStorage/sessionStorage**\nWhile the refresh token is httpOnly, the access token is stored in JavaScript-accessible storage. Consider using a pure cookie-based approach or MemoryStorage for SPAs to mitigate XSS impact.\n\n---\n\n### \ud83c\udfa8 **Code Quality & Style**\n\n#### Python (Backend)\n- \u2705 Good use of Pydantic for validation\n- \u2705 Proper HTTP status codes (201, 409, 429)\n- \u2705 Structured logging with structlog\n- \u26a0\ufe0f **Minor:** `TokenPayload` schema defines `iat` and `exp` as `int` - consider using `datetime` types\n\n#### JavaScript (Frontend)\n- \u2705 Consistent use of ES5-compatible syntax (var, function declarations) for broad browser support\n- \u2705 Good separation of concerns (Auth module, TableState)\n- \u2705 Input validation on both client and server\n- \u26a0\ufe0f **Inconsistent patterns:** `renderCreateForm` uses `innerHTML` while `renderEditForm` properly uses DOM APIs - standardize on DOM APIs\n\n#### HTML/CSS\n- \u2705 Semantic HTML structure\n- \u2705 Responsive design with media queries\n- \u2705 Good accessibility with labels and autocomplete attributes\n- \u26a0\ufe0f **Missing:** `login.html` is referenced but not in the file list - ensure it's included\n\n---\n\n### \ud83d\udc1b **Bugs & Issues**\n\n1. **`initAuthHeader` called twice** - In `index.html`, `initAuthHeader()` is called both in `app.js` and inline in the page script. This duplicates the logout button setup and user info fetch.\n\n2. **Unused `TABLES` constant** in `app.js` - The comment says \"kept for backward compatibility\" but it's no longer used anywhere.\n\n3. **`checkAuth` in signup.js only checks localStorage** - Should also check sessionStorage for consistency with the rest of the app.\n\n---\n\n### \ud83d\udccb **Recommendations**\n\n1. **Fix XSS in renderCreateForm:**\n```javascript\n// Change from:\nhtml += '<label for=\"field-' + field + '\">' + field + '</label>';\n// To:\nhtml += '<label for=\"field-' + escapeHtml(field) + '\">' + escapeHtml(field) + '</label>';\n```\n\n2. **Remove duplicate initAuthHeader** calls in index.html - rely on the one in `app.js`.\n\n3. **Add `escapeHtml` to `formatError`** - Error details from the API could contain malicious content.\n\n4. **Standardize on DOM APIs** instead of `innerHTML` for dynamic content.\n\n5. **Consider adding `autocomplete=\"off\"`** to the filter inputs to prevent browser autocomplete from interfering.\n\n---\n\n### \ud83d\udcca **Summary**\n\n| Category | Rating | Notes |\n|----------|--------|-------|\n| Security | \u2b50\u2b50\u2b50\u2b50 | Good practices overall, fix XSS in renderCreateForm |\n| Code Quality | \u2b50\u2b50\u2b50\u2b50 | Clean, well-organized, minor inconsistencies |\n| JS Best Practices | \u2b50\u2b50\u2b50\u2b50 | Good DOM handling, use escapeHtml consistently |\n| CSS | \u2b50\u2b50\u2b50\u2b50\u2b50 | Clean, responsive, good organization |\n\n**Verdict:** Minor changes requested. The XSS issue in `renderCreateForm` should be addressed before merge. Otherwise, excellent work on the auth flow and dashboard layout improvements!\n",
+            "submittedAt": "2026-02-17T23:05:21Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "COMMENTED",
+            "commit": {
+                "oid": "3f0e160d727f454993283531af891817ff57e66b"
+            }
+        },
+        {
+            "id": "PRR_kwDORIJs6c7jf6zY",
+            "author": {
+                "login": "miller46bot"
+            },
+            "authorAssociation": "COLLABORATOR",
+            "body": "# PR #54 Code Review - Code Snob\n\n## Summary\nOverall decent code with some style inconsistencies and minor issues. The functionality looks sound but there are naming, formatting, and maintainability concerns.\n\n## Issues Found\n\n### 1. **app.js - Inconsistent Comment Formatting**\nLine 1-2: The comment uses inconsistent spacing with dashes:\n```javascript\n// Tables configuration - kept for backward compatibility\n// Tables are now dynamically loaded from the API\n```\n**Suggestion**: Use consistent comment style. Either:\n```javascript\n// Tables configuration \u2014 kept for backward compatibility\n// Tables are now dynamically loaded from the API\n```\nOr remove the redundant second line entirely.\n\n### 2. **app.js - Extra Blank Line**\nLine 26: There's a stray blank line after `getStorage` function that breaks visual consistency.\n```javascript\ngetStorage: function() {\n  var useLocal = localStorage.getItem(\"remember_me\") === \"true\";\n  return useLocal ? localStorage : sessionStorage;\n},\n\n  // Get safe redirect URL...\n```\n**Fix**: Remove the extra blank line.\n\n### 3. **app.js - Redundant Comment**\nLine 858-859: The JSDoc is helpful but the \"Protected\" comment is redundant with the assignment:\n```javascript\n/**\n * Dashboard page initialization\n * Protected: assigns to window.initDashboardPage to prevent accidental override\n */\nwindow.initDashboardPage = function initDashboardPage() {\n```\n**Suggestion**: Move the protection note into the JSDoc properly or remove it since it's self-evident.\n\n### 4. **app.js - Magic String Duplication**\nThe class name `'table-hidden'` is hardcoded in at least 4 places. If this class name ever needs to change, it's easy to miss one.\n**Suggestion**: Define a constant at the top:\n```javascript\nvar CSS_HIDDEN_CLASS = 'table-hidden';\n```\n\n### 5. **app.js - Boolean Logic Could Be Clearer**\nMultiple instances of `visibleTables[tableName] !== false` to check visibility.\n**Suggestion**: Create a helper function:\n```javascript\nfunction isTableVisible(tableName, visibleTables) {\n  return visibleTables[tableName] !== false;\n}\n```\n\n### 6. **signup.js - Dead Code**\nLines 348-353: `ensureLoginPageExists` function is empty and serves no purpose. The comment suggests it's a fallback but it's not implemented.\n**Fix**: Remove this function or implement it.\n\n### 7. **signup.js - Magic Numbers**\nPassword strength calculation and toast timeout use hardcoded numbers.\n**Suggestion**: Define constants:\n```javascript\nvar MIN_PASSWORD_LENGTH = 8;\nvar STRONG_PASSWORD_LENGTH = 12;\nvar TOAST_DURATION_MS = 5000;\n```\n\n### 8. **signup.js - Duplicate Validation Pattern**\n`validateEmail`, `validatePassword`, and `validateConfirmPassword` follow nearly identical patterns. Consider a generic validator helper to reduce duplication.\n\n### 9. **auth.py - Redundant Comments**\nLines 114, 128: Comments like `# Check if user already exists` and `# Create new user` state the obvious.\n**Suggestion**: Remove redundant comments. The code is self-documenting.\n\n## Positive Notes\n\n1. \u2705 **Good security**: Removing `is_admin` from `UserCreate` schema prevents privilege escalation\n2. \u2705 **Proper rate limiting**: Signup endpoint has appropriate rate limiting\n3. \u2705 **Consistent logging**: Structured logging with `logger.info()` and `logger.warning()`\n4. \u2705 **HTTP semantics**: Correct status codes (201, 409, 422, 429)\n5. \u2705 **IIFE pattern**: signup.js uses proper IIFE with 'use strict'\n6. \u2705 **JSDoc comments**: Most functions have documentation\n\n## Recommendations\n\n1. Consider adopting ES6+ (let/const, arrow functions) for new JavaScript code\n2. Add aria-labels to the Show All/Hide All buttons for accessibility\n3. Extract hardcoded strings to constants for maintainability\n4. Remove dead code before merging\n\n## Verdict\n**COMMENT** - Code is functional but has style/maintainability issues that should be addressed. The dead code in signup.js and magic string duplication are the main concerns.",
+            "submittedAt": "2026-02-17T23:17:04Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "COMMENTED",
+            "commit": {
+                "oid": "01366bf84ece6e3c4622bba73a298b0a7fb48a56"
+            }
+        },
+        {
+            "id": "PRR_kwDORIJs6c7jf7FF",
+            "author": {
+                "login": "miller46bot"
+            },
+            "authorAssociation": "COLLABORATOR",
+            "body": "Thanks for the iteration-2 updates \u2014 the direction is solid, but I still see one architectural/API correctness issue that should be fixed before approval.\n\n## Blocking\n1) signup endpoint has a race condition that can return 500s under concurrency\n   - Current flow does pre-check (email exists?) then insert+commit.\n   - Two concurrent requests for the same email can both pass the pre-check, then one commit succeeds and the other raises a DB unique-constraint error.\n   - Right now that exception path is not handled, so clients may see a 500 instead of a deterministic API contract response.\n\n   Requested fix: wrap commit in try/except IntegrityError, call db.rollback(), and return a stable conflict response (409 or 400 per your API convention).\n   This keeps signup behavior deterministic at the API boundary and avoids leaking storage-layer failures.\n\n## Non-blocking architecture note\n- Dashboard table discovery currently scrapes openapi.json route paths and infers table resources by regex. This couples UI behavior to URL shape conventions. For long-term maintainability, consider a dedicated metadata endpoint (for example /api/v1/meta/tables) as the source of truth for admin-visible resources.\n\nOnce the signup conflict path is hardened, I\u2019m good to approve.",
+            "submittedAt": "2026-02-17T23:17:25Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "CHANGES_REQUESTED",
+            "commit": {
+                "oid": "01366bf84ece6e3c4622bba73a298b0a7fb48a56"
+            }
+        },
+        {
+            "id": "PRR_kwDORIJs6c7jgP5a",
+            "author": {
+                "login": "miller46bot"
+            },
+            "authorAssociation": "COLLABORATOR",
+            "body": "Thanks for the iteration\u2014there are good improvements here (dynamic table discovery, safer storage handling in signup auth check), but I still see two architectural blockers that should be fixed before approval:\n\n1) index.html still defines a global initDashboardPage() inline, which overrides the dashboard initializer in app.js.\n   - File: src/jm_api/static/index.html\n   - The inline function declaration replaces window.initDashboardPage set in app.js.\n   - Result: loadTablesList() in app.js is never executed on dashboard init, so the new dynamic table loading/visibility architecture is bypassed.\n   - Please remove the inline dashboard init function and keep page-init ownership in one place (app.js), or explicitly compose calls without global override.\n\n2) Signup auth-check race condition is still present.\n   - File: src/jm_api/static/signup.js\n   - checkAuth() runs asynchronously on DOMContentLoaded, but form listeners are attached and submit remains enabled immediately.\n   - A logged-in user can still submit signup before /api/v1/auth/me resolves and redirect occurs.\n   - Please gate form interactivity until auth check resolves (or await auth check before wiring submit), so authenticated users cannot race into signup.\n\nOnce these are addressed, I\u2019m happy to re-review.",
+            "submittedAt": "2026-02-17T23:47:16Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "CHANGES_REQUESTED",
+            "commit": {
+                "oid": "67a75cc6d74d8564132dc5558da4e0b606590e79"
+            }
+        },
+        {
+            "id": "PRR_kwDORIJs6c7jgQlf",
+            "author": {
+                "login": "miller46bot"
+            },
+            "authorAssociation": "COLLABORATOR",
+            "body": "## Code Quality Review (code-snob)\n\n### Issues Found\n\n#### 1. Misleading/Inaccurate JSDoc (app.js)\n```javascript\n/**\n * Dashboard page initialization\n * Protected: assigns to window.initDashboardPage to prevent accidental override\n */\nwindow.initDashboardPage = function initDashboardPage() {\n```\n**Issue:** The comment claims this is \"protected\" and prevents \"accidental override\" but this is just a standard global assignment. It does **not** prevent override - anyone can still overwrite `window.initDashboardPage`. \n\nOther page init functions (`initTablePage`, `initCreatePage`, `initEditPage`) use plain function declarations. This inconsistency is confusing.\n\n#### 2. Magic Strings Throughout (app.js)\nMultiple magic strings should be extracted as constants:\n- `visible_tables` - used 4 times\n- `tables` (URL param) - used 3 times  \n- `/^\\/api\\/v1\\/([a-zA-Z_][a-zA-Z0-9_]*)$/` - table extraction regex\n- `#table-checkboxes`, `#tables-list`, `#tables-loading` - repeated selectors\n\n**Recommendation:** Add a constants section at the top:\n```javascript\nconst STORAGE_KEYS = {\n  VISIBLE_TABLES: visible_tables\n};\nconst URL_PARAMS = {\n  TABLES: tables\n};\n```\n\n#### 3. Silent Error Suppression (app.js)\nMultiple empty catch blocks hide errors:\n```javascript\n} catch (e) {\n  // Ignore parsing errors\n}\n```\n```javascript\n} catch (e) {\n  // Ignore storage errors\n}\n```\n\n**Issue:** These silently fail, making debugging impossible. At minimum, use `console.warn()` or a debug log.\n\n#### 4. Duplicated Logic (app.js)\nIn `loadTablesList()`, the fallback duplicates the render calls:\n```javascript\n// In catch block:\nvar fallbackTables = [bots];\nwindow.dashboardTables = fallbackTables;\nvar visibleTables = getVisibleTablesFromStorage(fallbackTables);\nrenderTableVisibilityToggles(fallbackTables, visibleTables);\nrenderTablesList(fallbackTables, visibleTables);  // Same as success path\n```\n\n**Recommendation:** Extract a `renderDashboard(tables, visibleTables)` function to DRY this up.\n\n#### 5. Inline Styles Instead of CSS Classes (app.js)\n```javascript\nshowAllBtn.style.marginRight = 1rem;\nshowAllBtn.style.marginBottom = 0.5rem;\nseparator.style.width = 100%;\nseparator.style.marginBottom = 0.5rem;\n```\n\n**Issue:** This mixes presentation with behavior. Use CSS classes (e.g., `.btn-margin-right`, `.separator`) to keep styling in CSS.\n\n#### 6. Inconsistent Naming Conventions (app.js)\nThe codebase uses `renderXxx` for DOM rendering functions (`renderTablesList`, `renderTableVisibilityToggles`) but then breaks pattern with:\n```javascript\nfunction showTablesEmptyState(container, message)  // Should be: renderTablesEmptyState\n```\n\nAlso inconsistent: `loadTablesList` (no preposition) vs `getVisibleTablesFromStorage` / `saveVisibleTablesToStorage` (with prepositions).\n\n#### 7. Global Namespace Pollution (app.js)\n```javascript\nwindow.dashboardTables = [];\nwindow.initDashboardPage = function ...\n```\n\n**Issue:** These pollute the global scope. If they must be global, consider a single namespace:\n```javascript\nwindow.AdminDashboard = {\n  tables: [],\n  init: function() {...}\n};\n```\n\n#### 8. Mixed Variable Declaration Styles\nNew code uses `var` throughout but existing code uses `const`. Pick one style.\n\n#### 9. Inconsistent Function Styles\nThe file now has:\n- Arrow functions: `.then(response => ...)` (existing)\n- Function declarations: `function loadTablesList()` (new)\n- Function expressions: `window.initDashboardPage = function...` (new)\n\n**Recommendation:** Pick one style for consistency.\n\n### Minor Issues\n\n10. **Comment verbosity:** Comments like `// Separator` and `// Individual table checkboxes` just restate the obvious.\n\n11. **JSDoc missing:** New public functions lack JSDoc (`loadTablesList`, `extractTablesFromSpec`, etc.).\n\n### Summary\n\nThe functionality looks solid, but there are maintainability issues that should be addressed:\n- Extract magic strings to constants\n- Fix the misleading \"protected\" comment or remove it\n- DRY up the fallback rendering logic  \n- Move inline styles to CSS classes\n- Unify naming conventions\n- Add proper error logging instead of silent catches\n\nThese are style/maintainability issues, not functional bugs. Address at your discretion.\n\n**Verdict:** COMMENTED - No blocking issues, but recommend addressing the maintainability concerns above.",
+            "submittedAt": "2026-02-17T23:48:08Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "COMMENTED",
+            "commit": {
+                "oid": "67a75cc6d74d8564132dc5558da4e0b606590e79"
+            }
+        },
+        {
+            "id": "PRR_kwDORIJs6c7jhHmb",
+            "author": {
+                "login": "miller46"
+            },
+            "authorAssociation": "OWNER",
+            "body": "Architectural review notes:\n\nStrong progress on layout and dynamic table visibility, but two runtime architecture issues remain:\n\n1) Dashboard init ownership is still split and overridden\n- app.js defines window.initDashboardPage with dynamic loading (loadTablesList).\n- index.html still defines a global initDashboardPage in an inline script.\n- That global function overrides the app.js binding, so the intended dashboard initialization path is bypassed.\n- Recommendation: remove inline initDashboardPage from index.html and keep page init solely in app.js.\n\n2) Signup auth-check race remains\n- signup.js calls checkAuth() asynchronously on DOMContentLoaded, but form handlers are attached immediately and submit stays enabled.\n- Logged-in users can race-submit signup before /api/v1/auth/me resolves.\n- Recommendation: disable form interaction until auth check settles (or await auth check before wiring submit).\n\nNon-blocking architectural suggestion:\n- Table discovery via /openapi.json path regex works, but it tightly couples UI behavior to route shape. A dedicated metadata endpoint (e.g., /api/v1/meta/tables) would provide a more explicit/maintainable contract.\n\nHappy to re-review after these are addressed.",
+            "submittedAt": "2026-02-18T01:03:55Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "COMMENTED",
+            "commit": {
+                "oid": "67a75cc6d74d8564132dc5558da4e0b606590e79"
+            }
+        },
+        {
+            "id": "PRR_kwDORIJs6c7jhINc",
+            "author": {
+                "login": "miller46"
+            },
+            "authorAssociation": "OWNER",
+            "body": "## Code Review: PR #54\n\n### Overall Assessment\n\nThis PR introduces valuable functionality (dynamic table discovery, layout fixes, improved auth handling), but has several architectural and maintainability issues that should be addressed before merge.\n\n---\n\n### Blocking Issues\n\n#### 1. Global Namespace Pollution & Initialization Override\n**File:** `app.js`, `index.html`\n\nThe `window.initDashboardPage` assignment in app.js is overridden by the inline script in index.html. This means the dynamic table loading code in app.js is never executed.\n\n**Fix:** Remove the inline `initDashboardPage` from index.html or have it explicitly delegate to the app.js version.\n\n#### 2. URL Filter Logic Is Broken\n**File:** `app.js` - `getVisibleTablesFromStorage()`\n\nWhen `?tables=a,b` is provided, unspecified tables should be hidden. Currently the check `visibleTables[tableName] !== false` treats `undefined` as visible, so URL filtering doesn't actually filter anything.\n\n**Fix:** When URL param exists, explicitly set all non-listed tables to `false`.\n\n#### 3. Empty State Recovery Bug\n**File:** `app.js` - `toggleTableVisibility()`\n\nWhen all tables are hidden, `showTablesEmptyState()` replaces the list DOM. When a checkbox is toggled, the code tries to find `li[data-table]` elements that no longer exist.\n\n**Fix:** Either keep DOM elements and toggle classes, or detect empty-state and re-render the full list on any toggle.\n\n---\n\n### High Priority (Maintainability)\n\n#### 4. Silent Error Suppression\nMultiple empty catch blocks make debugging impossible. Use `console.warn()` at minimum.\n\n#### 5. Magic String Duplication\nExtract these to constants: `visible_tables`, `tables` (URL param), `table-hidden` class, repeated selectors.\n\n#### 6. Misleading Comment\nThe \"Protected\" comment on `initDashboardPage` is inaccurate - the assignment doesn't prevent override.\n\n---\n\n### Positive Aspects\n\n- Good fallback strategy when API fails (falls back to ['bots'])\n- State persistence in both localStorage and URL params\n- Responsive design improvements with proper flexbox\n- Maintains backward compatibility with existing tests\n- Proper error handling with user-facing messages\n\n---\n\n### Verdict\n\n**Request Changes** - The functional bugs (init override, broken URL filtering, empty state recovery) need to be fixed. The code style issues are non-blocking but should be addressed for maintainability.\n\nOnce the blocking issues are resolved, this will be a solid addition to the admin dashboard.\n",
+            "submittedAt": "2026-02-18T01:05:10Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "COMMENTED",
+            "commit": {
+                "oid": "67a75cc6d74d8564132dc5558da4e0b606590e79"
+            }
+        },
+        {
+            "id": "PRR_kwDORIJs6c7jhT29",
+            "author": {
+                "login": "miller46bot"
+            },
+            "authorAssociation": "COLLABORATOR",
+            "body": "## Code Review\n\n### \u2705 Approving with minor feedback\n\n**Well done on:**\n- Maintaining backward compatibility (TABLES constant, static HTML)\n- Proper error handling with fallback to default tables\n- localStorage wrapped in try-catch\n- URL param sync for shareable links\n- Responsive flexbox layout fixes\n\n**Nitpicks / Suggestions:**\n\n1. **Inline styles \u2192 CSS classes:** The toggle button margins are set via `element.style` in JS. Consider using CSS classes for maintainability:\n   ```js\n   showAllBtn.className = 'btn btn-secondary btn-toggle';\n   ```\n\n2. **Regex limitations:** The table extraction regex `/^\\/api\\/v1\\/([a-zA-Z_][a-zA-Z0-9_]*)$/` won't match hyphenated names. Intentional?\n\n3. **Debouncing:** Rapid checkbox toggles could thrash localStorage/re-renders. Consider debouncing the toggle handler.\n\n4. **Function size:** `toggleTableVisibility` does DOM updates, storage, URL updates, and empty-state checks. Could be split for readability.\n\n5. **Accessibility:** The `<details>` element for table visibility could use `aria-expanded` state.\n\n**Question:** Does `extractTablesFromSpec` validate that matched paths are GET endpoints, or just path structure? Might include non-CRUD paths.\n\nNone of these block approval - solid PR! \ud83d\udea2\n",
+            "submittedAt": "2026-02-18T01:21:31Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "COMMENTED",
+            "commit": {
+                "oid": "67a75cc6d74d8564132dc5558da4e0b606590e79"
+            }
+        },
+        {
+            "id": "PRR_kwDORIJs6c7jhUD7",
+            "author": {
+                "login": "miller46bot"
+            },
+            "authorAssociation": "COLLABORATOR",
+            "body": "Architectural review (design/scalability/security/maintainability):\\n\\nStrong improvements overall: the dashboard now has a cleaner layout structure, table overflow behavior is safer, and the dynamic overview removes hardcoded table assumptions while preserving backwards compatibility.\\n\\nKey architectural concern to track: table discovery is currently derived client-side from  path-shape parsing (). This couples the admin UI to URL conventions and requires shipping/parsing the full OpenAPI document on each dashboard load. As the API grows, this can become brittle (path/versioning changes) and adds avoidable payload/parse cost.\\n\\nRecommendation: introduce a dedicated lightweight metadata endpoint (e.g. ) or generate a static table manifest during build/deploy, then have the UI consume that contract. This centralizes ownership, reduces client complexity, and scales better.\\n\\nNon-blocking maintainability suggestions:\\n- Avoid inline style mutations for Show All/Hide All button spacing; prefer CSS classes for consistency/theming.\\n- Consider namespacing dashboard state instead of  to reduce global-scope coupling over time.\\n\\nNo critical security regressions observed in this PR relative to existing auth patterns.",
+            "submittedAt": "2026-02-18T01:21:59Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "COMMENTED",
+            "commit": {
+                "oid": "67a75cc6d74d8564132dc5558da4e0b606590e79"
+            }
+        },
+        {
+            "id": "PRR_kwDORIJs6c7jhUIC",
+            "author": {
+                "login": "miller46bot"
+            },
+            "authorAssociation": "COLLABORATOR",
+            "body": "Architectural review (design/scalability/security/maintainability):\n\nStrong improvements overall: the dashboard now has a cleaner layout structure, table overflow behavior is safer, and the dynamic overview removes hardcoded table assumptions while preserving backwards compatibility.\n\nKey architectural concern to track: table discovery is currently derived client-side from `/openapi.json` path-shape parsing (`/api/v1/{table}`). This couples the admin UI to URL conventions and requires shipping/parsing the full OpenAPI document on each dashboard load. As the API grows, this can become brittle (path/versioning changes) and adds avoidable payload/parse cost.\n\nRecommendation: introduce a dedicated lightweight metadata endpoint (e.g. `/api/v1/admin/tables`) or generate a static table manifest during build/deploy, then have the UI consume that contract. This centralizes ownership, reduces client complexity, and scales better.\n\nNon-blocking maintainability suggestions:\n- Avoid inline style mutations for Show All/Hide All button spacing; prefer CSS classes for consistency/theming.\n- Consider namespacing dashboard state instead of `window.dashboardTables` to reduce global-scope coupling over time.\n\nNo critical security regressions observed in this PR relative to existing auth patterns.\n",
+            "submittedAt": "2026-02-18T01:22:06Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "COMMENTED",
+            "commit": {
+                "oid": "67a75cc6d74d8564132dc5558da4e0b606590e79"
+            }
+        },
+        {
+            "id": "PRR_kwDORIJs6c7jh6o6",
+            "author": {
+                "login": "miller46"
+            },
+            "authorAssociation": "OWNER",
+            "body": "## Review Summary\n\n**LGTM** \u2705 - Code looks good to merge.\n\n### Highlights\n- **Layout fixes**: Flexbox-based layout properly resolves overflow/scrollbar issues\n- **Dynamic tables**: Smart extraction from OpenAPI spec with regex pattern\n- **Persistence**: Well-designed dual-layer persistence (URL params + localStorage)\n- **Backward compatibility**: TABLES constant and static HTML preserved for test compatibility\n- **Error handling**: Graceful fallbacks when API calls fail\n\n### Code Quality\n- Clean ES5-compatible code\n- Proper DOM manipulation patterns\n- Good separation of concerns\n- Responsive design with appropriate media queries\n\n### Tests\n- All 515 existing tests pass\n- Integration tests verified passing in CI\n\nMinor note: Inline styles in renderTableVisibilityToggles could be refactored to CSS classes in a future cleanup.\n\nReady to merge! \ud83d\udc4d",
+            "submittedAt": "2026-02-18T02:21:48Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "COMMENTED",
+            "commit": {
+                "oid": "1cbd32c767c8df9671885abc364e91c6fadaef52"
+            }
+        },
+        {
+            "id": "PRR_kwDORIJs6c7jh9de",
+            "author": {
+                "login": "miller46bot"
+            },
+            "authorAssociation": "COLLABORATOR",
+            "body": "",
+            "submittedAt": "2026-02-18T02:25:27Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "APPROVED",
+            "commit": {
+                "oid": "1cbd32c767c8df9671885abc364e91c6fadaef52"
+            }
+        },
+        {
+            "id": "PRR_kwDORIJs6c7jiC1L",
+            "author": {
+                "login": "miller46"
+            },
+            "authorAssociation": "OWNER",
+            "body": "## Code Review - PR #54\n\n### Would APPROVE\n\n**Layout fixes:** Proper flexbox structure resolves overflow issues, responsive header handles mobile well.\n\n**Dynamic tables:** Clean extraction from OpenAPI spec with good fallback handling. The visibility toggle with localStorage + URL params is a nice UX touch.\n\n**Code cleanup:** Good removal of duplicate auth init - the centralized initAuthHeader() approach is much cleaner.\n\n**Notable positives:**\n- Clean regex pattern for table name extraction\n- Proper empty state handling when all tables hidden\n- Backward compatibility maintained (static bots element for tests)\n- All 515 tests passing - no regressions\n\nLGTM!\n",
+            "submittedAt": "2026-02-18T02:35:08Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "COMMENTED",
+            "commit": {
+                "oid": "1cbd32c767c8df9671885abc364e91c6fadaef52"
+            }
+        },
+        {
+            "id": "PRR_kwDORIJs6c7jiDmo",
+            "author": {
+                "login": "miller46bot"
+            },
+            "authorAssociation": "COLLABORATOR",
+            "body": "Approving based on previous review - dashboard layout and dynamic table discovery are solid improvements. Code is functional and ready to merge.",
+            "submittedAt": "2026-02-18T02:37:07Z",
+            "includesCreatedEdit": false,
+            "reactionGroups": [],
+            "state": "APPROVED",
+            "commit": {
+                "oid": "1cbd32c767c8df9671885abc364e91c6fadaef52"
+            }
+        }
+    ],
+    "state": "MERGED",
+    "title": "fix(admin): dashboard layout issues and dynamic tables overview (#52)",
+    "updatedAt": "2026-02-18T02:37:31Z"
+}

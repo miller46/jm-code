@@ -1,0 +1,14 @@
+[
+    {
+        "number": 100,
+        "title": "Add user authentication",
+        "state": "closed",
+        "createdAt": "2026-02-18T10:00:00Z",
+        "updatedAt": "2026-02-18T12:00:00Z",
+        "body": "Implement user authentication with JWT tokens.",
+        "labels": [],
+        "author": {"login": "testuser", "id": "U100", "is_bot": false, "name": ""},
+        "closed": true,
+        "closedAt": "2026-02-18T12:00:00Z"
+    }
+]

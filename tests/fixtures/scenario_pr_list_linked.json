@@ -1,0 +1,12 @@
+[
+    {
+        "number": 200,
+        "title": "Implement auth feature",
+        "state": "OPEN",
+        "createdAt": "2026-02-18T11:00:00Z",
+        "updatedAt": "2026-02-18T11:00:00Z",
+        "author": {"login": "miller46", "id": "U200", "is_bot": false, "name": ""},
+        "headRefName": "feature/auth",
+        "body": "Implements the auth feature.\n\nCloses #100"
+    }
+]

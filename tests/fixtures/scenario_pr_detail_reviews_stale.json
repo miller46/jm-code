@@ -1,0 +1,26 @@
+{
+    "number": 200,
+    "title": "Implement auth feature",
+    "state": "OPEN",
+    "headRefOid": "aaa111bbb222ccc333ddd444eee555fff66677788",
+    "mergeable": "MERGEABLE",
+    "mergeStateStatus": "CLEAN",
+    "reviews": [
+        {
+            "author": {"login": "architect"},
+            "state": "CHANGES_REQUESTED",
+            "commit": {"oid": "999888777666555444333222111000aaabbbcccddd"},
+            "body": "Needs work on error handling.",
+            "submittedAt": "2026-02-18T12:00:00Z"
+        },
+        {
+            "author": {"login": "code-snob"},
+            "state": "APPROVED",
+            "commit": {"oid": "999888777666555444333222111000aaabbbcccddd"},
+            "body": "Looks acceptable.",
+            "submittedAt": "2026-02-18T12:01:00Z"
+        }
+    ],
+    "createdAt": "2026-02-18T11:00:00Z",
+    "updatedAt": "2026-02-18T14:00:00Z"
+}
