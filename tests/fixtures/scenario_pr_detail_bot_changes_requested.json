@@ -1,0 +1,58 @@
+{
+    "_comment": "PR #64 real-world scenario: reviews posted via shared bot account (miller46bot) on behalf of reviewer agents. 4 of 5 reviews are CHANGES_REQUESTED, 1 is APPROVED. The bot account login does not match agent names in required_reviewers.",
+    "number": 64,
+    "title": "[backend] Security hardening: token rotation, error handling, and validation",
+    "state": "OPEN",
+    "headRefOid": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36",
+    "mergeable": "MERGEABLE",
+    "mergeStateStatus": "CLEAN",
+    "reviews": [
+        {
+            "id": "PRR_kwDORIJs6c7kIbbz",
+            "author": {"login": "miller46bot"},
+            "authorAssociation": "COLLABORATOR",
+            "body": "VERDICT: REQUEST_CHANGES\n\nThanks for the solid hardening work here.\n\n## Blocking architectural/security concern:\n\n**1) Over-broad replay containment revokes all user sessions for non-replay cases**\n\nPlease address item (1) before merge.",
+            "submittedAt": "2026-02-19T17:36:54Z",
+            "state": "CHANGES_REQUESTED",
+            "commit": {"oid": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36"}
+        },
+        {
+            "id": "PRR_kwDORIJs6c7kIcFN",
+            "author": {"login": "miller46bot"},
+            "authorAssociation": "COLLABORATOR",
+            "body": "VERDICT: APPROVE\n\n## Code Review: PR #64 - Security Hardening\n\nApprove - The security improvements significantly outweigh the minor issues. Production-ready.",
+            "submittedAt": "2026-02-19T17:37:13Z",
+            "state": "APPROVED",
+            "commit": {"oid": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36"}
+        },
+        {
+            "id": "PRR_kwDORIJs6c7kIl2I",
+            "author": {"login": "miller46bot"},
+            "authorAssociation": "COLLABORATOR",
+            "body": "VERDICT: REQUEST_CHANGES\n\nThanks for the solid hardening work here.\n\nPlease address item (1) before merge.",
+            "submittedAt": "2026-02-19T17:42:42Z",
+            "state": "CHANGES_REQUESTED",
+            "commit": {"oid": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36"}
+        },
+        {
+            "id": "PRR_kwDORIJs6c7kIwcl",
+            "author": {"login": "miller46bot"},
+            "authorAssociation": "COLLABORATOR",
+            "body": "VERDICT: REQUEST_CHANGES\n\nOverall this PR is a strong step forward on auth hardening.\n\nAfter the three blocking items are addressed, this looks close to approvable.",
+            "submittedAt": "2026-02-19T17:49:30Z",
+            "state": "CHANGES_REQUESTED",
+            "commit": {"oid": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36"}
+        },
+        {
+            "id": "PRR_kwDORIJs6c7kIweC",
+            "author": {"login": "miller46bot"},
+            "authorAssociation": "COLLABORATOR",
+            "body": "VERDICT: REQUEST_CHANGES\n\n## Security Hardening PR Review\n\n### Must-Fix Issues\n\n1) consume_refresh_token can raise unhandled exception (correctness bug)",
+            "submittedAt": "2026-02-19T17:49:32Z",
+            "state": "CHANGES_REQUESTED",
+            "commit": {"oid": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36"}
+        }
+    ],
+    "createdAt": "2026-02-19T17:21:17Z",
+    "updatedAt": "2026-02-19T17:49:32Z"
+}

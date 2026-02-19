@@ -1,6 +1,8 @@
 import sys
 from jm_bot.base_bot.remote_config_bots.redis_remote_bot import BotWithRedisRemoteConfig
 from github.get_open_prs import PRQueueClient
+from agent import spawn_fix_agent, review_agent
+from workflow import get_reviewers
 
 
 class Bot(BotWithRedisRemoteConfig):
@@ -17,12 +19,23 @@ class Bot(BotWithRedisRemoteConfig):
             review = client.query(action="needs_review", limit=10)
             print(f"Found {review['counts']['returned']} PRs needing review")
             for pr in review["prs"]:
-                self.logging.info(f"Init review for PR #{pr['prNumber']}")
+                pr_number = pr["prNumber"]
+                self.logging.info(f"Init review for PR #{pr_number}")
+                repo = pr["repo"]["full_name"]
+                reviewers = get_reviewers(repo)
+                for reviewer in reviewers:
+                    agent_id = reviewer["agent"]
+                    task = review_agent.get_reviewer_prompt(reviewer_id=agent_id, repo=repo, pr_number=pr_number)
+                    spawn_fix_agent(pr, task=task, agent_id=agent_id)
 
+            return
             fixes = client.query(action="needs_fix", limit=10)
             print(f"Found {review['counts']['returned']} PRs needing fixes")
             for pr in fixes["prs"]:
                 self.logging.info(f"Init fix for PR #{pr['prNumber']}")
+                repo = pr["repo"]["full_name"]
+                task = f"Fix PR #{pr['prNumber']} {repo}"
+                spawn_fix_agent(pr, task=task)
 
             conflicts = client.query(action="needs_conflict_resolution", limit=10)
             print(f"Found {review['counts']['returned']} PRs needing conflict resolution")

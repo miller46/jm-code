@@ -1,0 +1,202 @@
+[
+    {
+        "id": 3827414771,
+        "node_id": "PRR_kwDORIJs6c7kIbbz",
+        "user": {
+            "login": "miller46bot",
+            "id": 259687432,
+            "node_id": "U_kgDOD3qECA",
+            "avatar_url": "https://avatars.githubusercontent.com/u/259687432?v=4",
+            "gravatar_id": "",
+            "url": "https://api.github.com/users/miller46bot",
+            "html_url": "https://github.com/miller46bot",
+            "followers_url": "https://api.github.com/users/miller46bot/followers",
+            "following_url": "https://api.github.com/users/miller46bot/following{/other_user}",
+            "gists_url": "https://api.github.com/users/miller46bot/gists{/gist_id}",
+            "starred_url": "https://api.github.com/users/miller46bot/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/miller46bot/subscriptions",
+            "organizations_url": "https://api.github.com/users/miller46bot/orgs",
+            "repos_url": "https://api.github.com/users/miller46bot/repos",
+            "events_url": "https://api.github.com/users/miller46bot/events{/privacy}",
+            "received_events_url": "https://api.github.com/users/miller46bot/received_events",
+            "type": "User",
+            "user_view_type": "public",
+            "site_admin": false
+        },
+        "body": "VERDICT: REQUEST_CHANGES\n\nThanks for the solid hardening work here\u2014moving refresh sessions to persistent storage, adding one-time token consumption, and adding RBAC guardrails for bot writes are all strong architectural improvements.\n\n## Blocking architectural/security concern:\n\n**1) Over-broad replay containment revokes all user sessions for non-replay cases**\n- In /auth/refresh, when  returns true, the code decodes the presented token and calls .\n- However,  returns true not only for replayed/revoked tokens, but also for:\n  - expired tokens\n  - unknown/missing session rows\n- This means benign states (e.g., stale cookie on one device, legacy token after migration, cleanup race) trigger global session revocation for that user. That is a high-impact behavior mismatch: normal expiration can force-logout all active devices.\n- **Recommendation**: distinguish revocation reasons in the session-check path (e.g., enum/result object: ACTIVE, REVOKED, EXPIRED, UNKNOWN, MISMATCH) and only trigger  on explicit replay/compromise signals (e.g., token exists and was already revoked/consumed unexpectedly), not on EXPIRED/UNKNOWN.\n\n## Non-blocking but important design notes:\n\n**2) Refresh rotation is not atomic**\n- Refresh flow consumes old token (commit) then persists new token (second commit). If persist fails, old token is gone and user gets 500.\n- This is safe from replay perspective, but brittle operationally. Consider wrapping consume+insert in one transaction boundary so rotation is all-or-nothing.\n\n**3) HttpOnly strategy is weakened by returning refresh token in response body**\n- login/refresh set HttpOnly cookie but also return refresh_token in JSON. Any XSS can read the response body/token, reducing HttpOnly benefit.\n- If possible, avoid returning refresh_token in body (or gate behind explicit compatibility mode) and keep refresh token cookie-only.\n\n**4) Opportunistic cleanup in request path**\n-  does delete+commit during token checks. This can add latency/lock pressure on auth paths.\n- Current bounded interval helps; long-term prefer background job exclusively.\n\n## What looks good:\n- SessionToken model + migration are clear and indexed on expected access paths\n-  rowcount-based one-time use is a good anti-race pattern\n- User/token-sub mismatch validation is a good defensive check\n- Bots write routes now require ADMIN_ONLY, matching RBAC intent\n\nPlease address item (1) before merge; the current behavior can cause unintended account-wide logout cascades under normal token expiration/unknown-token conditions.",
+        "state": "CHANGES_REQUESTED",
+        "html_url": "https://github.com/miller46/jm-api/pull/64#pullrequestreview-3827414771",
+        "pull_request_url": "https://api.github.com/repos/miller46/jm-api/pulls/64",
+        "author_association": "COLLABORATOR",
+        "_links": {
+            "html": {
+                "href": "https://github.com/miller46/jm-api/pull/64#pullrequestreview-3827414771"
+            },
+            "pull_request": {
+                "href": "https://api.github.com/repos/miller46/jm-api/pulls/64"
+            }
+        },
+        "submitted_at": "2026-02-19T17:36:54Z",
+        "commit_id": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36"
+    },
+    {
+        "id": 3827417421,
+        "node_id": "PRR_kwDORIJs6c7kIcFN",
+        "user": {
+            "login": "miller46bot",
+            "id": 259687432,
+            "node_id": "U_kgDOD3qECA",
+            "avatar_url": "https://avatars.githubusercontent.com/u/259687432?v=4",
+            "gravatar_id": "",
+            "url": "https://api.github.com/users/miller46bot",
+            "html_url": "https://github.com/miller46bot",
+            "followers_url": "https://api.github.com/users/miller46bot/followers",
+            "following_url": "https://api.github.com/users/miller46bot/following{/other_user}",
+            "gists_url": "https://api.github.com/users/miller46bot/gists{/gist_id}",
+            "starred_url": "https://api.github.com/users/miller46bot/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/miller46bot/subscriptions",
+            "organizations_url": "https://api.github.com/users/miller46bot/orgs",
+            "repos_url": "https://api.github.com/users/miller46bot/repos",
+            "events_url": "https://api.github.com/users/miller46bot/events{/privacy}",
+            "received_events_url": "https://api.github.com/users/miller46bot/received_events",
+            "type": "User",
+            "user_view_type": "public",
+            "site_admin": false
+        },
+        "body": "VERDICT: APPROVE\n\n## Code Review: PR #64 - Security Hardening\n\n### Summary\nThis PR significantly improves the authentication system's security posture by implementing token rotation hardening, comprehensive error handling, and proper validation. The changes address several critical security concerns including token replay attacks, race conditions during token consumption, and database error resilience.\n\n### \u2705 What's Good\n\n**1. Token Rotation Hardening**\n- consume_refresh_token() provides atomic consumption, preventing race condition exploits\n- Token replay detection revokes ALL user sessions when a revoked token is reused\n- Proper chain of rotation tracking with rotated_from_jti\n\n**2. Error Handling**\n- All database operations have proper try/except blocks with rollback\n- ValidationError caught in decode_token() preventing 500 errors from malformed JWT payloads\n- JTI collisions return 400 instead of 500\n\n**3. Security Validation**\n- Added user_id mismatch check in is_refresh_token_revoked()\n- Password length validation (8-128 chars) on login requests\n\n**4. Test Coverage**\n- Excellent test coverage including token replay scenarios, race conditions, malformed payloads\n\n### \u26a0\ufe0f Minor Issues (Non-blocking)\n\n**1. Silent Error in Logout (Low Priority)**\nSQLAlchemy errors in logout are caught and logged but not re-raised - consider returning 500 instead.\n\n**2. JTI Collision Handling**\nWorth monitoring if UUIDv4 collisions occur frequently in production.\n\n**3. Error Chaining**\nConsider using raise ... from None to prevent internal exception details from leaking.\n\n### \ud83c\udfc1 Verdict\nApprove - The security improvements significantly outweigh the minor issues. Production-ready.",
+        "state": "APPROVED",
+        "html_url": "https://github.com/miller46/jm-api/pull/64#pullrequestreview-3827417421",
+        "pull_request_url": "https://api.github.com/repos/miller46/jm-api/pulls/64",
+        "author_association": "COLLABORATOR",
+        "_links": {
+            "html": {
+                "href": "https://github.com/miller46/jm-api/pull/64#pullrequestreview-3827417421"
+            },
+            "pull_request": {
+                "href": "https://api.github.com/repos/miller46/jm-api/pulls/64"
+            }
+        },
+        "submitted_at": "2026-02-19T17:37:13Z",
+        "commit_id": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36"
+    },
+    {
+        "id": 3827457416,
+        "node_id": "PRR_kwDORIJs6c7kIl2I",
+        "user": {
+            "login": "miller46bot",
+            "id": 259687432,
+            "node_id": "U_kgDOD3qECA",
+            "avatar_url": "https://avatars.githubusercontent.com/u/259687432?v=4",
+            "gravatar_id": "",
+            "url": "https://api.github.com/users/miller46bot",
+            "html_url": "https://github.com/miller46bot",
+            "followers_url": "https://api.github.com/users/miller46bot/followers",
+            "following_url": "https://api.github.com/users/miller46bot/following{/other_user}",
+            "gists_url": "https://api.github.com/users/miller46bot/gists{/gist_id}",
+            "starred_url": "https://api.github.com/users/miller46bot/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/miller46bot/subscriptions",
+            "organizations_url": "https://api.github.com/users/miller46bot/orgs",
+            "repos_url": "https://api.github.com/users/miller46bot/repos",
+            "events_url": "https://api.github.com/users/miller46bot/events{/privacy}",
+            "received_events_url": "https://api.github.com/users/miller46bot/received_events",
+            "type": "User",
+            "user_view_type": "public",
+            "site_admin": false
+        },
+        "body": "\n\nVERDICT: REQUEST_CHANGES\n\nThanks for the solid hardening work here\u2014moving refresh sessions to persistent storage, adding one-time token consumption, and adding RBAC guardrails for bot writes are all strong architectural improvements.\nBlocking architectural/security concern:\n\n1) Over-broad replay containment revokes all user sessions for non-replay cases\n\n    In /auth/refresh, when returns true, the code decodes the presented token and calls .\n    However, returns true not only for replayed/revoked tokens, but also for:\n        expired tokens\n        unknown/missing session rows\n    This means benign states (e.g., stale cookie on one device, legacy token after migration, cleanup race) trigger global session revocation for that user. That is a high-impact behavior mismatch: normal expiration can force-logout all active devices.\n    Recommendation: distinguish revocation reasons in the session-check path (e.g., enum/result object: ACTIVE, REVOKED, EXPIRED, UNKNOWN, MISMATCH) and only trigger on explicit replay/compromise signals (e.g., token exists and was already revoked/consumed unexpectedly), not on EXPIRED/UNKNOWN.\n\nNon-blocking but important design notes:\n\n2) Refresh rotation is not atomic\n\n    Refresh flow consumes old token (commit) then persists new token (second commit). If persist fails, old token is gone and user gets 500.\n    This is safe from replay perspective, but brittle operationally. Consider wrapping consume+insert in one transaction boundary so rotation is all-or-nothing.\n\n3) HttpOnly strategy is weakened by returning refresh token in response body\n\n    login/refresh set HttpOnly cookie but also return refresh_token in JSON. Any XSS can read the response body/token, reducing HttpOnly benefit.\n    If possible, avoid returning refresh_token in body (or gate behind explicit compatibility mode) and keep refresh token cookie-only.\n\n4) Opportunistic cleanup in request path\n\n    does delete+commit during token checks. This can add latency/lock pressure on auth paths.\n    Current bounded interval helps; long-term prefer background job exclusively.\n\nWhat looks good:\n\n    SessionToken model + migration are clear and indexed on expected access paths\n    rowcount-based one-time use is a good anti-race pattern\n    User/token-sub mismatch validation is a good defensive check\n    Bots write routes now require ADMIN_ONLY, matching RBAC intent\n\nPlease address item (1) before merge; the current behavior can cause unintended account-wide logout cascades under normal token expiration/unknown-token conditions.\n",
+        "state": "CHANGES_REQUESTED",
+        "html_url": "https://github.com/miller46/jm-api/pull/64#pullrequestreview-3827457416",
+        "pull_request_url": "https://api.github.com/repos/miller46/jm-api/pulls/64",
+        "author_association": "COLLABORATOR",
+        "_links": {
+            "html": {
+                "href": "https://github.com/miller46/jm-api/pull/64#pullrequestreview-3827457416"
+            },
+            "pull_request": {
+                "href": "https://api.github.com/repos/miller46/jm-api/pulls/64"
+            }
+        },
+        "submitted_at": "2026-02-19T17:42:42Z",
+        "commit_id": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36"
+    },
+    {
+        "id": 3827500837,
+        "node_id": "PRR_kwDORIJs6c7kIwcl",
+        "user": {
+            "login": "miller46bot",
+            "id": 259687432,
+            "node_id": "U_kgDOD3qECA",
+            "avatar_url": "https://avatars.githubusercontent.com/u/259687432?v=4",
+            "gravatar_id": "",
+            "url": "https://api.github.com/users/miller46bot",
+            "html_url": "https://github.com/miller46bot",
+            "followers_url": "https://api.github.com/users/miller46bot/followers",
+            "following_url": "https://api.github.com/users/miller46bot/following{/other_user}",
+            "gists_url": "https://api.github.com/users/miller46bot/gists{/gist_id}",
+            "starred_url": "https://api.github.com/users/miller46bot/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/miller46bot/subscriptions",
+            "organizations_url": "https://api.github.com/users/miller46bot/orgs",
+            "repos_url": "https://api.github.com/users/miller46bot/repos",
+            "events_url": "https://api.github.com/users/miller46bot/events{/privacy}",
+            "received_events_url": "https://api.github.com/users/miller46bot/received_events",
+            "type": "User",
+            "user_view_type": "public",
+            "site_admin": false
+        },
+        "body": "VERDICT: REQUEST_CHANGES\n\nOverall this PR is a strong step forward on auth hardening. I especially like:\n- Atomic-style token consumption intent (consume_refresh_token) to reduce refresh replay race windows\n- Replay containment via revoke_user_sessions\n- Better DB error handling and defensive rollback patterns\n- Expanded test coverage for malformed payloads, replay, collision, and mismatch cases\n\nThat said, I recommend requesting changes before merge for long-term correctness and maintainability:\n\n1) Refresh rotation is not transactionally atomic (can strand sessions)\n- In refresh_token, you consume old token and then persist new token in separate DB commits.\n- If the second step fails, the old token is already revoked and no replacement token is persisted.\n- Result: user receives 500 and is forced into an avoidable re-auth flow.\n\nWhat to change:\n- Make rotation a single unit-of-work (one transaction): consume old token + insert new token + commit once.\n\n2) Layering boundary regression: dependency helpers now raise HTTPException\n- persist_refresh_token (in api/deps.py) now raises HTTPException(400) for IntegrityError.\n- This couples persistence/domain logic to HTTP transport semantics.\n\nWhat to change:\n- Keep deps/data helpers transport-agnostic: raise domain exceptions and map to HTTP in route layer.\n\n3) Opportunistic cleanup swallows all exceptions silently\n- _maybe_cleanup_expired_sessions catches broad Exception and does nothing.\n- Silent failure impairs observability.\n\nWhat to change:\n- Catch expected DB exceptions (SQLAlchemyError) instead.\n- Log at least warning/debug with reason.\n\nMinor note:\n- Enforcing min_length=8 on LoginRequest.password changes input validation semantics. If intentional, document it.\n\nAfter the three blocking items are addressed, this looks close to approvable.",
+        "state": "CHANGES_REQUESTED",
+        "html_url": "https://github.com/miller46/jm-api/pull/64#pullrequestreview-3827500837",
+        "pull_request_url": "https://api.github.com/repos/miller46/jm-api/pulls/64",
+        "author_association": "COLLABORATOR",
+        "_links": {
+            "html": {
+                "href": "https://github.com/miller46/jm-api/pull/64#pullrequestreview-3827500837"
+            },
+            "pull_request": {
+                "href": "https://api.github.com/repos/miller46/jm-api/pulls/64"
+            }
+        },
+        "submitted_at": "2026-02-19T17:49:30Z",
+        "commit_id": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36"
+    },
+    {
+        "id": 3827500930,
+        "node_id": "PRR_kwDORIJs6c7kIweC",
+        "user": {
+            "login": "miller46bot",
+            "id": 259687432,
+            "node_id": "U_kgDOD3qECA",
+            "avatar_url": "https://avatars.githubusercontent.com/u/259687432?v=4",
+            "gravatar_id": "",
+            "url": "https://api.github.com/users/miller46bot",
+            "html_url": "https://github.com/miller46bot",
+            "followers_url": "https://api.github.com/users/miller46bot/followers",
+            "following_url": "https://api.github.com/users/miller46bot/following{/other_user}",
+            "gists_url": "https://api.github.com/users/miller46bot/gists{/gist_id}",
+            "starred_url": "https://api.github.com/users/miller46bot/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/miller46bot/subscriptions",
+            "organizations_url": "https://api.github.com/users/miller46bot/orgs",
+            "repos_url": "https://api.github.com/users/miller46bot/repos",
+            "events_url": "https://api.github.com/users/miller46bot/events{/privacy}",
+            "received_events_url": "https://api.github.com/users/miller46bot/received_events",
+            "type": "User",
+            "user_view_type": "public",
+            "site_admin": false
+        },
+        "body": "VERDICT: REQUEST_CHANGES\n\n## Security Hardening PR Review\n\n### Must-Fix Issues\n\n1) consume_refresh_token can raise unhandled exception (correctness bug)\n- The function calls _decode_refresh_token_payload() BEFORE the try/except block.\n- If token is malformed/expired, this raises outside handler, causing 500 instead of 401.\n- Fix: Move payload decode inside try block or handle jwt.InvalidTokenError separately.\n\n2) Silent failure in session cleanup masks real problems\n- Bare 'except Exception:' swallows all errors including DB connection failures.\n- At minimum, log the exception. Preferably catch SQLAlchemyError.\n\n3) Logout reports success when session revocation fails\n- If revoke_refresh_token raises SQLAlchemyError, code logs and continues, returning 204.\n- User believes they're logged out but session remains valid. Security issue.\n- Fix: Return 500 when session revocation fails.\n\n### Should-Fix Issues\n\n4) Inconsistent exception handling - cleanup catches Exception while others catch SQLAlchemyError.\n5) Double JWT decode in refresh endpoint - token decoded 2-3 times. Cache the payload.\n\n### Nit\n\n6) Error message leaks implementation detail - 'Token ID collision - retry' reveals JTI mechanism.\n\n### What's Good\n- Atomic consume via UPDATE ... WHERE revoked_at IS NULL correctly eliminates race condition\n- Token replay containment follows security best practices\n- Good test coverage\n- Password length validation at schema level is correct\n- Token ownership verification adds defense in depth",
+        "state": "CHANGES_REQUESTED",
+        "html_url": "https://github.com/miller46/jm-api/pull/64#pullrequestreview-3827500930",
+        "pull_request_url": "https://api.github.com/repos/miller46/jm-api/pulls/64",
+        "author_association": "COLLABORATOR",
+        "_links": {
+            "html": {
+                "href": "https://github.com/miller46/jm-api/pull/64#pullrequestreview-3827500930"
+            },
+            "pull_request": {
+                "href": "https://api.github.com/repos/miller46/jm-api/pulls/64"
+            }
+        },
+        "submitted_at": "2026-02-19T17:49:32Z",
+        "commit_id": "e2bed5badec6c29ab09e2ee99d75ee6dec4fdc36"
+    }
+]
