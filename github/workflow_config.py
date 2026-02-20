@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import List
+from typing import Dict, List, Optional
 
 _DEFAULTS = {
     "db_path": "~/.openclaw/workspace-manager/workflow.db",
@@ -42,6 +42,35 @@ def load_reviewers_for_repo(repo: str) -> List[str]:
             if reviewers:
                 return [r["name"] for r in reviewers if r.get("enabled", True)]
     return list(_DEFAULT_REVIEWERS)
+
+
+_DEFAULT_APPROVAL_RULES = {
+    "mode": "all",
+    "min_approvals": None,  # None = all reviewers must approve
+    "required_reviewers": [],
+    "veto_powers": [],
+}
+
+
+def load_approval_rules_for_repo(repo: str) -> Optional[Dict]:
+    """Load approval_rules from the reviewer config for a repo.
+
+    Returns the approval_rules dict if present, None otherwise.
+    When None, the caller should fall back to requiring all reviewers.
+    """
+    root = _workspace_root()
+    candidates = [
+        os.path.join(root, "config", *repo.split("/"), "reviewers.json"),
+        os.path.join(root, "config", "default_reviewers.json"),
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            with open(path) as f:
+                cfg = json.load(f)
+            rules = cfg.get("approval_rules")
+            if rules:
+                return {**_DEFAULT_APPROVAL_RULES, **rules}
+    return None
 
 
 def _find_config_path():

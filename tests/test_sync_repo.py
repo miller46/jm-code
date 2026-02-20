@@ -276,6 +276,7 @@ class TestSyncRepoEndToEnd:
             patch("github_sync.fetch_issues", return_value=issues),
             patch("github_sync.fetch_prs", return_value=[]),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -321,6 +322,7 @@ class TestSyncRepoEndToEnd:
             patch("github_sync.fetch_prs", return_value=[pr_in_list]),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -385,6 +387,7 @@ class TestSyncRepoEndToEnd:
             patch("github_sync.fetch_prs", return_value=[pr_in_list]),
             patch("github_sync.fetch_pr_detail", return_value=modified_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -452,6 +455,7 @@ class TestSyncRepoEndToEnd:
             patch("github_sync.fetch_prs", return_value=[pr_in_list]),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -491,6 +495,7 @@ class TestSyncRepoEndToEnd:
             patch("github_sync.fetch_prs", return_value=[]),  # PR #50 not in open list
             patch("github_sync.fetch_pr_detail", return_value=closed_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -543,6 +548,7 @@ class TestSyncRepoEndToEnd:
             patch("github_sync.fetch_prs", return_value=[pr_in_list]),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -613,6 +619,7 @@ class TestSyncRepoEndToEnd:
             patch("github_sync.fetch_prs", return_value=[pr_in_list]),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 

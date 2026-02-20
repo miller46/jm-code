@@ -104,6 +104,7 @@ def _sync(tmp_db, issues, prs, pr_detail=None):
         "github_sync.fetch_issues": lambda _: issues,
         "github_sync.fetch_prs": lambda _: prs,
         "github_sync.load_reviewers_for_repo": lambda _: REQUIRED_REVIEWERS,
+        "github_sync.load_approval_rules_for_repo": lambda _: None,
     }
     if pr_detail is not None:
         patches["github_sync.fetch_pr_detail"] = lambda *a, **kw: pr_detail
@@ -127,6 +128,7 @@ class TestEmptyRepo:
             patch("github_sync.fetch_issues", return_value=[]),
             patch("github_sync.fetch_prs", return_value=[]),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -147,6 +149,7 @@ class TestSingleOpenIssue:
             patch("github_sync.fetch_issues", return_value=issues),
             patch("github_sync.fetch_prs", return_value=[]),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -173,6 +176,7 @@ class TestSingleClosedIssue:
             patch("github_sync.fetch_issues", return_value=issues),
             patch("github_sync.fetch_prs", return_value=[]),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -198,6 +202,7 @@ class TestPrNoReviews:
             patch("github_sync.fetch_prs", return_value=pr_list),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -230,6 +235,7 @@ class TestIssueWithLinkedPr:
             patch("github_sync.fetch_prs", return_value=pr_list),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -259,6 +265,7 @@ class TestPrAllApproved:
             patch("github_sync.fetch_prs", return_value=pr_list),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -285,6 +292,7 @@ class TestPrChangesRequested:
             patch("github_sync.fetch_prs", return_value=pr_list),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -310,6 +318,7 @@ class TestPrPartialApproval:
             patch("github_sync.fetch_prs", return_value=pr_list),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -335,6 +344,7 @@ class TestPrApprovedWithConflicts:
             patch("github_sync.fetch_prs", return_value=pr_list),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -360,6 +370,7 @@ class TestPrConflictsNotApproved:
             patch("github_sync.fetch_prs", return_value=pr_list),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -386,6 +397,7 @@ class TestPrMerged:
             patch("github_sync.fetch_prs", return_value=pr_list),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -412,6 +424,7 @@ class TestPrNewCommitAfterReview:
             patch("github_sync.fetch_prs", return_value=pr_list),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -443,6 +456,7 @@ class TestReconcileClosedPr:
             patch("github_sync.fetch_prs", return_value=[]),  # PR not in open list
             patch("github_sync.fetch_pr_detail", return_value=closed_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -472,6 +486,7 @@ class TestReconcileMergedPr:
             patch("github_sync.fetch_prs", return_value=[]),
             patch("github_sync.fetch_pr_detail", return_value=merged_detail),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             count = sync_repo(REPO)
 
@@ -505,6 +520,7 @@ class TestFullLifecycle:
             patch("github_sync.fetch_issues", return_value=issues),
             patch("github_sync.fetch_prs", return_value=[]),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             sync_repo(REPO)
 
@@ -522,6 +538,7 @@ class TestFullLifecycle:
             patch("github_sync.fetch_prs", return_value=pr_list),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail_no_rev),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             sync_repo(REPO)
 
@@ -540,6 +557,7 @@ class TestFullLifecycle:
             patch("github_sync.fetch_prs", return_value=pr_list),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail_cr),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             sync_repo(REPO)
 
@@ -581,6 +599,7 @@ class TestFullLifecycle:
             patch("github_sync.fetch_prs", return_value=pr_list),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail_v2_stale),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             sync_repo(REPO)
 
@@ -623,6 +642,7 @@ class TestFullLifecycle:
             patch("github_sync.fetch_prs", return_value=pr_list),
             patch("github_sync.fetch_pr_detail", return_value=pr_detail_v2_approved),
             patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
         ):
             sync_repo(REPO)
 

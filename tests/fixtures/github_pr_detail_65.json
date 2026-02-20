@@ -1,0 +1,49 @@
+{
+  "author": {
+    "id": "MDQ6VXNlcjQ3MjQxOTY=",
+    "is_bot": false,
+    "login": "miller46",
+    "name": ""
+  },
+  "body": "## Summary\nImplements issue #63 with backend security hardening for refresh-token sessions.\n\n## Changes\n- Fixes refresh-token rotation race condition by using atomic conditional UPDATE (`WHERE revoked_at IS NULL`) and a single-transaction rotation helper (`rotate_refresh_token`)\n- Adds explicit handling for token-already-consumed path in `/auth/refresh`\n- Improves cleanup resilience by keeping session cleanup opportunistic (rollback and continue on cleanup failures)\n- Adds JTI collision handling via `SessionTokenCollisionError` and safe API responses\n- Enforces JWT/session user consistency check (reject when JWT `sub` != persisted session `user_id`)\n- Adds/updates security tests, including concurrent rotation behavior and cleanup error resilience\n\n## Verification\n- Ran: `.venv/bin/pytest -q tests/test_auth.py` (pass)\n- Full suite has unrelated pre-existing failures outside auth scope\n\nCloses #63\n",
+  "createdAt": "2026-02-20T00:43:04Z",
+  "headRefOid": "a6b092dda1885d06004cbf1b31fbe5a7b266728d",
+  "mergeStateStatus": "CLEAN",
+  "mergeable": "MERGEABLE",
+  "number": 65,
+  "reviews": [
+    {
+      "id": "PRR_kwDORIJs6c7kQaLM",
+      "author": {
+        "login": "miller46architect"
+      },
+      "authorAssociation": "COLLABORATOR",
+      "body": "VERDICT: APPROVE\nBLOCKING_ISSUES: 0\nSUMMARY: Solid security hardening implementation.",
+      "submittedAt": "2026-02-20T02:19:14Z",
+      "includesCreatedEdit": false,
+      "reactionGroups": [],
+      "state": "APPROVED",
+      "commit": {
+        "oid": "a6b092dda1885d06004cbf1b31fbe5a7b266728d"
+      }
+    },
+    {
+      "id": "PRR_kwDORIJs6c7kQojT",
+      "author": {
+        "login": "miller46architect"
+      },
+      "authorAssociation": "COLLABORATOR",
+      "body": "VERDICT: APPROVE\nBLOCKING_ISSUES: 0\nSUMMARY: Solid security hardening PR.",
+      "submittedAt": "2026-02-20T02:37:55Z",
+      "includesCreatedEdit": false,
+      "reactionGroups": [],
+      "state": "APPROVED",
+      "commit": {
+        "oid": "a6b092dda1885d06004cbf1b31fbe5a7b266728d"
+      }
+    }
+  ],
+  "state": "OPEN",
+  "title": "[backend] Security hardening: token rotation, error handling, and validation",
+  "updatedAt": "2026-02-20T02:37:55Z"
+}

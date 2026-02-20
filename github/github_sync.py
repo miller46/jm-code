@@ -25,7 +25,7 @@ from enum import Enum
 # CONFIGURATION
 # ============================================================================
 
-from github.workflow_config import get_config, load_reviewers_for_repo
+from github.workflow_config import get_config, load_reviewers_for_repo, load_approval_rules_for_repo
 from github.workflow_config import MAX_ITERATIONS  # backward-compat re-export  # noqa: F401
 
 
@@ -218,11 +218,15 @@ class ReviewEvaluation:
 def evaluate_reviews(
         reviews: List[dict],
         required_reviewers: List[str],
+        approval_rules: Optional[Dict] = None,
 ) -> ReviewEvaluation:
     """
     Build latest decision per required reviewer.
     Each review's author.login is treated as the reviewer identity.
     Reviews are sorted by submittedAt ascending so "latest review wins" is deterministic.
+
+    When approval_rules is provided, uses min_approvals threshold instead of
+    requiring ALL reviewers to approve.
     """
     latest_decision: Dict[str, str] = {}
     latest_review_sha: Optional[str] = None
@@ -246,9 +250,37 @@ def evaluate_reviews(
             if review_sha:
                 latest_review_sha = review_sha
 
-    all_required_approved = all(
-        _casefold_eq(latest_decision.get(r), "APPROVED") for r in required_reviewers
-    )
+    if approval_rules and approval_rules.get("min_approvals") is not None:
+        # Count approvals from the reviewer pool
+        approval_count = sum(
+            1 for r in required_reviewers
+            if _casefold_eq(latest_decision.get(r), "APPROVED")
+        )
+        min_approvals = approval_rules["min_approvals"]
+
+        # Check specifically-required reviewers (subset that MUST approve)
+        rules_required = approval_rules.get("required_reviewers", [])
+        specific_ok = all(
+            _casefold_eq(latest_decision.get(r), "APPROVED") for r in rules_required
+        )
+
+        # Check veto powers
+        veto_reviewers = approval_rules.get("veto_powers", [])
+        veto_blocked = any(
+            _casefold_eq(latest_decision.get(r), "CHANGES_REQUESTED") for r in veto_reviewers
+        )
+
+        all_required_approved = (
+            approval_count >= min_approvals
+            and specific_ok
+            and not veto_blocked
+        )
+    else:
+        # Legacy: all reviewers must approve
+        all_required_approved = all(
+            _casefold_eq(latest_decision.get(r), "APPROVED") for r in required_reviewers
+        )
+
     any_changes_requested = any(
         _casefold_eq(latest_decision.get(r), "CHANGES_REQUESTED") for r in required_reviewers
     )
@@ -366,6 +398,7 @@ def determine_pr_action(
         pr_detail: dict,
         existing: Optional[WorkflowItem],
         required_reviewers: List[str] = None,
+        approval_rules: Optional[Dict] = None,
 ) -> tuple[Status, Action, bool, bool, dict, str]:
     """
     SHA-gated state machine for PR action determination.
@@ -386,7 +419,7 @@ def determine_pr_action(
         f"  PR #{pr_num}: gh_state={pr_detail.get('state')}  head={head_sha[:8] if head_sha else 'None'}  mergeable={mergeable}  mergeState={merge_state}")
 
     # Evaluate reviews using pure function
-    ev = evaluate_reviews(reviews_raw, required_reviewers)
+    ev = evaluate_reviews(reviews_raw, required_reviewers, approval_rules=approval_rules)
 
     has_conflicts = _casefold_eq(mergeable, "CONFLICTING") or _casefold_eq(merge_state, "DIRTY")
 
@@ -690,6 +723,7 @@ def sync_repo(repo: str) -> int:
     count = 0
     now = datetime.now(timezone.utc).isoformat()
     repo_reviewers = load_reviewers_for_repo(repo)
+    repo_approval_rules = load_approval_rules_for_repo(repo)
 
     prs = fetch_prs(repo)
     issues = fetch_issues(repo)
@@ -749,7 +783,7 @@ def sync_repo(repo: str) -> int:
         pr_detail = fetch_pr_detail(repo, pr["number"])
 
         status, action, all_approved, any_changes_requested, reviewer_decisions, last_reviewed_sha = determine_pr_action(
-            pr_detail, existing, repo_reviewers)
+            pr_detail, existing, repo_reviewers, approval_rules=repo_approval_rules)
 
         head_sha = pr_detail.get("headRefOid")
 
