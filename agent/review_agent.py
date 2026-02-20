@@ -1,6 +1,6 @@
 from config.openclaw import SUBMIT_PR_TOOL_FILE_LOCATION
 
-def get_reviewer_prompt(repo:str, pr_number:str) -> str:
+def get_reviewer_prompt(reviewer_id:str, repo:str, pr_number:str) -> str:
     return (
 f"""You are tasked with code reviewing PR #{pr_number} in {repo}...
 
@@ -13,7 +13,7 @@ To submit the review, run this exact command:
 python3 {SUBMIT_PR_TOOL_FILE_LOCATION} \
   --repo "{repo}" \
   --pr-number {pr_number} \
-  --reviewer-id architect \
+  --reviewer-id {reviewer_id} \
   --verdict <approve|request_changes> \
   --body "<review text>"
 
@@ -29,7 +29,8 @@ def get_pr_fix_prompt(repo:str, pr_number:str) -> str:
         f"Do NOT open a new pull request."
     )
 
-# TODO custom tool for submitting merge conflict fixes (this could maybe be the same as "fix" with like one line added about conflicts)
+# TODO custom tool for submitting merge conflict fixes
+#  (this could maybe be combined with "fix" with one line added about conflicts)
 def get_pr_conflicts_prompt(repo:str, pr_number:str) -> str:
     return (
         f"You are tasked with fixing the merge conflicts in PR #{pr_number} in {repo}.\n\n"
