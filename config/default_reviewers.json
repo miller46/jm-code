@@ -20,7 +20,7 @@
   ],
   "approval_rules": {
     "mode": "majority",
-    "min_approvals": 2,
+    "min_approvals": 1,
     "required_reviewers": [],
     "veto_powers": []
   }
