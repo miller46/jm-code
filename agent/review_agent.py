@@ -4,7 +4,10 @@ def get_reviewer_prompt(repo:str, pr_number:str) -> str:
     return (
 f"""You are tasked with code reviewing PR #{pr_number} in {repo}...
 
-... existing instructions ...
+Your job is ONLY:
+1) Determine review verdict: "approve" or "request_changes".
+2) Write concise, actionable review text in "body".
+3) Submit verdict and body via submit_pr_review.
 
 To submit the review, run this exact command:
 python3 {SUBMIT_PR_TOOL_FILE_LOCATION} \

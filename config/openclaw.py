@@ -1,2 +1,2 @@
-SUBMIT_PR_TOOL_FILE_LOCATION = "/Users/jack/.openclaw/workspace-manager/scripts/submit_pr_review.py"
+SUBMIT_PR_TOOL_FILE_LOCATION = "github/submit_pr_review.py"
 

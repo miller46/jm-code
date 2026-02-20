@@ -4,7 +4,7 @@ Bots to enable agents to write code, review pull requests, fix issues, and merge
 
 `bot.py` is the entry point and contains the primary workflow logic. 
 
-NOTE: Spec creation, GitHub issue creation, and assigning the initial dev work are currently handled by OpenClaw cron jobs. See `/cron`
+NOTE: requires `OPENCLAW_GATEWAY_TOKEN` env variable set with your OpenClaw Gateway token.
 
 ## Workflow
 
