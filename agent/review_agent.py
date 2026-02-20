@@ -27,3 +27,19 @@ def get_reviewer_prompt(reviewer_id:str, repo:str, pr_number:str) -> str:
         "- Do NOT send summary messages.\n"
         "- Do NOT use gh pr review directly."
     )
+
+# TODO custom tool for submitting PR fixes (add dispatch)
+def get_pr_fix_prompt(reviewer_id:str, repo:str, pr_number:str) -> str:
+    return (
+        f"You are reviewer agent \"{reviewer_id}\" tasked with fixing PR #{pr_number} in {repo}.\n\n"
+        f"You must commit code changes to the same branch as the pull request.\n" 
+        f"Do NOT open a new pull request."
+    )
+
+# TODO custom tool for submitting merge conflict fixes (this could maybe be the same as "fix" with like one line added about conflicts)
+def get_pr_conflicts_prompt(reviewer_id:str, repo:str, pr_number:str) -> str:
+    return (
+        f"You are reviewer agent \"{reviewer_id}\" tasked with fixing the merge conflicts in PR #{pr_number} in {repo}.\n\n"
+        f"You must commit code changes to the same branch as the pull request.\n" 
+        f"Do NOT open a new pull request."
+    )

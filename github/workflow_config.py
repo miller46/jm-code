@@ -11,7 +11,7 @@ _DEFAULTS = {
     "max_iterations": 5,
 }
 
-_DEFAULT_REVIEWERS = ["code-snob", "architect"]
+_DEFAULT_REVIEWERS = ["miller46codesnob", "miller46architect"]
 
 _cached_config = None
 
@@ -31,8 +31,8 @@ def load_reviewers_for_repo(repo: str) -> List[str]:
     """
     root = _workspace_root()
     candidates = [
-        os.path.join(root, "repos", *repo.split("/"), "reviewers.json"),
-        os.path.join(root, "reviewers.json"),
+        os.path.join(root, "config", *repo.split("/"), "reviewers.json"),
+        os.path.join(root, "config", "default_reviewers.json"),
     ]
     for path in candidates:
         if os.path.isfile(path):

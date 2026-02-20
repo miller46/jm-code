@@ -7,6 +7,12 @@ CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
 
 
 def get_reviewers(repo: str) -> list[dict]:
+    return get_reviewer_data(repo)["reviewers"]
+
+def get_review_policy(repo: str) -> list[dict]:
+    return get_reviewer_data(repo)["approval_rules"]
+
+def get_reviewer_data(repo: str) -> list[dict]:
     """Return the reviewer list for *repo* (owner/repo format).
 
     Looks for config/{owner}/{repo}/reviewers.json first.
@@ -26,4 +32,4 @@ def get_reviewers(repo: str) -> list[dict]:
 
     default = CONFIG_DIR / "default_reviewers.json"
     data = json.loads(default.read_text())
-    return data["reviewers"]
+    return data
