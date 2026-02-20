@@ -44,7 +44,34 @@ Do NOT open a new pull request.
 #  (this could maybe be combined with "fix" with one line added about conflicts)
 def get_pr_conflicts_prompt(repo:str, pr_number:str, branch:str) -> str:
     return (
-        f"You are tasked with fixing the merge conflicts in PR #{pr_number} in {repo}.\n\n"
-        f"You must commit code changes to the same branch as the pull request.\n" 
-        f"Do NOT open a new pull request."
+f"""Fix merge conflicts in PR #{pr_number} in {repo}.
+
+The PR is on branch: {branch}
+
+STEP 1 - ASSESS THE CONFLICTS:
+Run: git status
+Identify all files with merge conflicts.
+
+STEP 2 - UNDERSTAND THE CHANGES:
+For each conflicted file:
+- View the conflict markers to see what changed
+- Understand what both sides were trying to do
+- git log --oneline origin/main..HEAD (to see your branch's commits)
+- git log --oneline HEAD..origin/main (to see what main added)
+
+STEP 3 - RESOLVE CONFLICTS:
+- Edit each conflicted file to resolve conflicts logically
+- Do NOT just pick "ours" or "theirs" blindly
+- Ensure the code still makes sense after resolution
+- Remove all conflict markers (<<<<<<, =======, >>>>>>>)
+
+STEP 4 - VALIDATE:
+- Stage resolved files: git add <files>
+- Commit the merge: git commit (accept default message)
+- Push to branch: git push origin {branch}
+- Run tests if available to ensure resolution didn't break anything
+
+You must commit to THIS EXACT BRANCH: {branch}
+Do NOT open a new pull request.
+"""
     )
