@@ -22,16 +22,30 @@ Wait for the command to complete and parse its JSON output.
     )
 
 # TODO custom tool for submitting PR fixes (add dispatch)
-def get_pr_fix_prompt(repo:str, pr_number:str) -> str:
+def get_pr_fix_prompt(repo:str, pr_number:str, branch:str) -> str:
     return (
-        f"You are tasked with fixing PR #{pr_number} in {repo}.\n\n"
-        f"You must commit code changes to the same branch as the pull request.\n" 
-        f"Do NOT open a new pull request."
+f"""You are tasked with fixing PR #{pr_number} in {repo}.
+The PR is on branch: {branch}
+
+CRITICAL: Before making any changes, you MUST:
+1. Read the PR comments and review feedback using `gh pr view {pr_number} --comments` or `gh api repos/{repo}/pulls/{pr_number}/comments`
+2. Read the latest review that requested changes
+3. Understand exactly what fixes are being requested
+4. Make THOSE specific fixes — not other changes
+
+The reviewer is requesting changes. Address their specific concerns:
+- If they mention CSRF cookie TTL, fix the CSRF cookie TTL
+- If they mention session binding bypass, fix the session binding bypass
+- Do NOT add unrelated tests or features
+
+You must commit code changes to THIS EXACT BRANCH: {branch}
+Do NOT open a new pull request.
+"""
     )
 
 # TODO custom tool for submitting merge conflict fixes
 #  (this could maybe be combined with "fix" with one line added about conflicts)
-def get_pr_conflicts_prompt(repo:str, pr_number:str) -> str:
+def get_pr_conflicts_prompt(repo:str, pr_number:str, branch:str) -> str:
     return (
         f"You are tasked with fixing the merge conflicts in PR #{pr_number} in {repo}.\n\n"
         f"You must commit code changes to the same branch as the pull request.\n" 

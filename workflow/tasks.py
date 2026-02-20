@@ -32,9 +32,10 @@ def fix_open_prs(client:PRQueueClient):
         description = pr["title"]
         # todo have manager pick the dev
         agent_id = _suggest_agent(title=description, labels=[], default_agent="backend-dev")
-        task = review_agent.get_pr_fix_prompt(repo=repo, pr_number=pr_number)
+        branch = pr['headRefName']
+        task = review_agent.get_pr_fix_prompt(repo=repo, pr_number=pr_number, branch=branch)
         print(task)
-        spawn_fix_agent(pr, task=task)
+        spawn_fix_agent(pr, agent_id=agent_id, task=task)
 
 def fix_pr_merge_conflicts(client:PRQueueClient):
     conflicts = client.query(action="needs_conflict_resolution", limit=10)
@@ -45,9 +46,10 @@ def fix_pr_merge_conflicts(client:PRQueueClient):
         repo = pr["repo"]
         description = pr["title"]
         agent_id = _suggest_agent(title=description, labels=[], default_agent="backend-dev")
-        task = review_agent.get_pr_conflicts_prompt(repo=repo, pr_number=pr_number)
+        branch = pr['headRefName']
+        task = review_agent.get_pr_conflicts_prompt(repo=repo, pr_number=pr_number, branch=branch)
         print(task)
-        spawn_fix_agent(pr, task=task)
+        spawn_fix_agent(pr, agent_id=agent_id, task=task)
 
 def merge_prs(client:PRQueueClient):
     merges = client.query(action="ready_to_merge", limit=10)
