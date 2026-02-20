@@ -1,0 +1,12 @@
+x - github accounts for backend dev and frontend dev
+- make issue-triage use a custom tool to enforce github token
+- finish pr-fix
+- finish pr-merge
+- finish pr-conflicts
+
+backlog
+- have manager pick the agent for dev work (fix, conflict, issue triage)
+- make custom tools fix, conflict, and merge
+- add dispatch to each of these (use custom tool for this)
+- error edge case, possible that one review fails and then the PR review step is all fucked up
+    - should re-run review for that agent only
