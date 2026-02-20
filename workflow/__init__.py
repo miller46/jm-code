@@ -28,7 +28,7 @@ def get_reviewer_data(repo: str) -> list[dict]:
     override = CONFIG_DIR / owner / name / "reviewers.json"
     if override.is_file():
         data = json.loads(override.read_text())
-        return data["reviewers"]
+        return data
 
     default = CONFIG_DIR / "default_reviewers.json"
     data = json.loads(default.read_text())

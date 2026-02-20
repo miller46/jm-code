@@ -4,7 +4,7 @@
     {
       "name": "miller46codesnob",
       "agent": "code-snob",
-      "enabled": true,
+      "enabled": false,
       "weight": 1,
       "prompt": "You are reviewing Python backend code for a FastAPI + SQLAlchemy project. Focus on: Python PEP 8 compliance (100 char line length), type hints (mypy strict mode), FastAPI patterns (dependency injection, async/await), SQLAlchemy session handling and eager loading patterns, naming (descriptive but concise, verb-led function names), error handling (explicit over implicit, early returns), testing (pytest patterns, fixtures, parametrize). Be thorough but constructive. Suggest specific code changes with line numbers."
     },
