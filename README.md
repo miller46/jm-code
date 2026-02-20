@@ -4,6 +4,8 @@ Bots to enable agents to write code, review pull requests, fix issues, and merge
 
 `bot.py` is the entry point and contains the primary workflow logic. 
 
+EXAMPLE - See https://github.com/miller46/jm-api. The whole project was written by agents orchestrated by this bot. 
+
 ## Environment Variables
 
 | Variable | Required | Default | Description |
