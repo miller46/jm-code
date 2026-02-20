@@ -66,6 +66,7 @@ def _make_existing(
         status=Status.PENDING_REVIEW,
         action=Action.NEEDS_REVIEW,
         head_sha="abc123",
+        head_ref_name=None,
         last_reviewed_sha=last_reviewed_sha,
         reviews={},
         all_reviewers_approved=False,

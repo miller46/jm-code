@@ -97,6 +97,7 @@ def _make_existing(
         status=status,
         action=Action.NEEDS_REVIEW,
         head_sha="abc123",
+        head_ref_name=None,
         last_reviewed_sha=last_reviewed_sha,
         reviews={},
         all_reviewers_approved=False,
@@ -342,6 +343,7 @@ class TestSyncRepoEndToEnd:
         assert pr_item["status"] == "pending_review"
         assert pr_item["action"] == "needs_review"
         assert pr_item["head_sha"] == "aaa111bbb222ccc333"
+        assert pr_item["head_ref_name"] == "feature/session-store"
 
     def test_sync_pr_with_reviews_changes_requested(self, tmp_db, issues, pr_detail_60):
         """Sync a PR that has CHANGES_REQUESTED → correct status in DB."""

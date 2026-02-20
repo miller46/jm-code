@@ -100,6 +100,7 @@ class WorkflowItem:
 
     # Review state (for PRs)
     head_sha: Optional[str]
+    head_ref_name: Optional[str]
     last_reviewed_sha: Optional[str]
     reviews: Dict[str, str]  # {"code-snob": "APPROVED", ...}
     all_reviewers_approved: bool
@@ -147,6 +148,7 @@ CREATE TABLE IF NOT EXISTS workflow_items (
 
     -- PR-specific fields
     head_sha TEXT,
+    head_ref_name TEXT,
     last_reviewed_sha TEXT,
     reviews_json TEXT,               -- JSON dict of reviewer->decision
     all_reviewers_approved BOOLEAN DEFAULT 0,
@@ -529,6 +531,7 @@ def get_existing_item(item_id: str) -> Optional[WorkflowItem]:
         status=Status(row["status"]),
         action=Action(row["action"]),
         head_sha=row["head_sha"],
+        head_ref_name=row["head_ref_name"],
         last_reviewed_sha=row["last_reviewed_sha"],
         reviews=json.loads(row["reviews_json"] or "{}"),
         all_reviewers_approved=bool(row["all_reviewers_approved"]),
@@ -556,16 +559,16 @@ def save_item(item: WorkflowItem):
     conn.execute("""
         INSERT OR REPLACE INTO workflow_items (
             id, type, repo, number, title, github_state, repo_scoped_id,
-            status, action, head_sha, last_reviewed_sha, reviews_json,
+            status, action, head_sha, head_ref_name, last_reviewed_sha, reviews_json,
             all_reviewers_approved, any_changes_requested, sha_matches_review, has_conflicts,
             last_review_dispatch_sha, last_fix_dispatch_sha, last_merge_dispatch_sha, last_conflict_dispatch_sha, last_head_sha_seen,
             iteration, max_iterations, assigned_agent, lock_expires,
             created_at, updated_at, last_sync
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         item.id, item.type.value, item.repo, item.number, item.title, item.github_state,
         item.repo_scoped_id,
-        item.status.value, item.action.value, item.head_sha, item.last_reviewed_sha,
+        item.status.value, item.action.value, item.head_sha, item.head_ref_name, item.last_reviewed_sha,
         json.dumps(item.reviews),
         item.all_reviewers_approved, item.any_changes_requested,
         item.sha_matches_review, item.has_conflicts,
@@ -591,6 +594,7 @@ def migrate_db():
         "last_merge_dispatch_sha": "ALTER TABLE workflow_items ADD COLUMN last_merge_dispatch_sha TEXT",
         "last_head_sha_seen": "ALTER TABLE workflow_items ADD COLUMN last_head_sha_seen TEXT",
         "last_conflict_dispatch_sha": "ALTER TABLE workflow_items ADD COLUMN last_conflict_dispatch_sha TEXT",
+        "head_ref_name": "ALTER TABLE workflow_items ADD COLUMN head_ref_name TEXT",
     }
 
     for col, sql in migrations.items():
@@ -749,6 +753,7 @@ def sync_repo(repo: str) -> int:
             status=status,
             action=action,
             head_sha=None,
+            head_ref_name=None,
             last_reviewed_sha=None,
             reviews={},
             all_reviewers_approved=False,
@@ -816,6 +821,7 @@ def sync_repo(repo: str) -> int:
             status=status,
             action=action,
             head_sha=head_sha,
+            head_ref_name=pr.get("headRefName"),
             last_reviewed_sha=last_reviewed_sha,
             reviews=reviewer_decisions,
             all_reviewers_approved=all_approved,

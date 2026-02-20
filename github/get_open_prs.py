@@ -301,6 +301,7 @@ def run(spec: InputSpec, db_path: str, config_path: str) -> dict[str, Any]:
         repo_col = _col(cols, "repo", "repository", "repo_full_name")
         author_col = _col(cols, "author", "author_login", "user_login")
         head_sha_col = _col(cols, "head_sha", "headSha", "latest_commit_sha")
+        head_ref_name_col = _col(cols, "head_ref_name", "headRefName")
         iteration_col = _col(cols, "iteration")
         labels_col = _col(cols, "labels_json", "labels")
         updated_col = _col(cols, "updated_at", "synced_at", "created_at")
@@ -373,6 +374,7 @@ def run(spec: InputSpec, db_path: str, config_path: str) -> dict[str, Any]:
                 "title": title,
                 "author": str(row[author_col]) if author_col and row[author_col] is not None else None,
                 "headSha": head_sha,
+                "headRefName": str(row[head_ref_name_col]) if head_ref_name_col and row[head_ref_name_col] is not None else None,
                 "status": action,
                 "dispatchType": DISPATCH_TYPE_MAP[spec.action],
                 "_sortUpdated": str(row[updated_col]) if updated_col and row[updated_col] is not None else "",
@@ -538,6 +540,7 @@ class PRQueueClient:
         repo_col = _col(cols, "repo", "repository", "repo_full_name")
         author_col = _col(cols, "author", "author_login", "user_login")
         head_sha_col = _col(cols, "head_sha", "headSha", "latest_commit_sha")
+        head_ref_name_col = _col(cols, "head_ref_name", "headRefName")
         iteration_col = _col(cols, "iteration")
         labels_col = _col(cols, "labels_json", "labels")
         updated_col = _col(cols, "updated_at", "synced_at", "created_at")
@@ -608,6 +611,7 @@ class PRQueueClient:
                 "title": title,
                 "author": str(row[author_col]) if author_col and row[author_col] is not None else None,
                 "headSha": head_sha,
+                "headRefName": str(row[head_ref_name_col]) if head_ref_name_col and row[head_ref_name_col] is not None else None,
                 "status": action,
                 "dispatchType": DISPATCH_TYPE_MAP[spec.action],
                 "_sortUpdated": str(row[updated_col]) if updated_col and row[updated_col] is not None else "",

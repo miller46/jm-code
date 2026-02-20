@@ -79,6 +79,7 @@ def _make_existing(item_id, **kwargs):
         status=Status.CHANGES_REQUESTED,
         action=Action.NEEDS_FIX,
         head_sha=OLD_SHA,
+        head_ref_name=None,
         last_reviewed_sha=OLD_SHA,
         reviews={"miller46architect": "CHANGES_REQUESTED"},
         all_reviewers_approved=False,

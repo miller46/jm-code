@@ -33,10 +33,7 @@ CRITICAL: Before making any changes, you MUST:
 3. Understand exactly what fixes are being requested
 4. Make THOSE specific fixes — not other changes
 
-The reviewer is requesting changes. Address their specific concerns:
-- If they mention CSRF cookie TTL, fix the CSRF cookie TTL
-- If they mention session binding bypass, fix the session binding bypass
-- Do NOT add unrelated tests or features
+The reviewer is requesting changes. Address their specific concerns. Do NOT add unrelated tests or features
 
 You must commit code changes to THIS EXACT BRANCH: {branch}
 Do NOT open a new pull request.

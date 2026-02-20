@@ -49,6 +49,7 @@ def pr64_existing():
         status=Status.PENDING_REVIEW,
         action=Action.NEEDS_REVIEW,
         head_sha=PR64_SHA,
+        head_ref_name=None,
         last_reviewed_sha=None,
         reviews={},
         all_reviewers_approved=False,

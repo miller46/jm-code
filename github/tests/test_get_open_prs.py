@@ -41,6 +41,7 @@ CREATE TABLE workflow_items (
     repo TEXT,
     author TEXT,
     head_sha TEXT,
+    head_ref_name TEXT,
     iteration INTEGER DEFAULT 0,
     labels_json TEXT,
     updated_at TEXT,
@@ -70,6 +71,7 @@ def _insert_pr(
     action: str = "needs_review",
     state: str = "open",
     head_sha: str = "abc123",
+    head_ref_name: str | None = None,
     iteration: int = 0,
     priority: int = 0,
     updated_at: str = "2025-01-01T00:00:00Z",
@@ -80,9 +82,9 @@ def _insert_pr(
     cur.execute(
         """INSERT INTO workflow_items
         (item_type, github_state, action, number, title, repo, author,
-         head_sha, iteration, priority, updated_at, claimed,
+         head_sha, head_ref_name, iteration, priority, updated_at, claimed,
          last_review_dispatch_sha, last_fix_dispatch_sha)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             "pr",
             state,
@@ -92,6 +94,7 @@ def _insert_pr(
             repo,
             "dev1",
             head_sha,
+            head_ref_name,
             iteration,
             priority,
             updated_at,
@@ -115,9 +118,9 @@ def db_path(tmp_path):
     conn = sqlite3.connect(str(p))
     conn.executescript(_SCHEMA)
     cur = conn.cursor()
-    _insert_pr(cur, repo="acme/app", number=1, action="needs_review", head_sha="sha1", updated_at="2025-01-01T00:00:00Z")
-    _insert_pr(cur, repo="acme/app", number=2, action="needs_review", head_sha="sha2", updated_at="2025-01-02T00:00:00Z")
-    _insert_pr(cur, repo="acme/app", number=3, action="needs_fix", head_sha="sha3", updated_at="2025-01-03T00:00:00Z")
+    _insert_pr(cur, repo="acme/app", number=1, action="needs_review", head_sha="sha1", head_ref_name="feature/auth", updated_at="2025-01-01T00:00:00Z")
+    _insert_pr(cur, repo="acme/app", number=2, action="needs_review", head_sha="sha2", head_ref_name="fix/login-bug", updated_at="2025-01-02T00:00:00Z")
+    _insert_pr(cur, repo="acme/app", number=3, action="needs_fix", head_sha="sha3", head_ref_name="feature/api-update", updated_at="2025-01-03T00:00:00Z")
     _insert_pr(cur, repo="acme/lib", number=10, action="needs_review", head_sha="sha10", updated_at="2025-01-04T00:00:00Z")
     _insert_pr(cur, repo="acme/app", number=4, action="needs_review", head_sha="sha4", updated_at="2025-01-05T00:00:00Z", claimed=1)
     conn.commit()
@@ -257,6 +260,22 @@ class TestQuery:
         with PRQueueClient(db_path=db_path, config_path=config_path) as client:
             result = client.query(action="needs_review", include_suggested_dev_agent=True)
         assert "suggestedDevAgent" in result["prs"][0]
+
+    def test_head_ref_name_included_in_output(self, db_path, config_path):
+        """headRefName should appear in query output when stored in DB."""
+        with PRQueueClient(db_path=db_path, config_path=config_path) as client:
+            result = client.query(action="needs_fix")
+        pr = result["prs"][0]
+        assert pr["prNumber"] == 3
+        assert pr["headRefName"] == "feature/api-update"
+
+    def test_head_ref_name_null_when_missing(self, db_path, config_path):
+        """headRefName should be None when not stored in DB."""
+        with PRQueueClient(db_path=db_path, config_path=config_path) as client:
+            result = client.query(action="needs_review", repos=["acme/lib"])
+        pr = result["prs"][0]
+        assert pr["prNumber"] == 10
+        assert pr["headRefName"] is None
 
     def test_result_shape(self, db_path, config_path):
         with PRQueueClient(db_path=db_path, config_path=config_path) as client:
