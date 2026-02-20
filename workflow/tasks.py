@@ -17,7 +17,8 @@ def review_open_prs(client:PRQueueClient):
             if 'enabled' in reviewer and not reviewer['enabled']:
                 print(f"Skipping. Agent {agent_id} disabled")
                 continue
-            task = review_agent.get_reviewer_prompt(reviewer_id=agent_id, repo=repo, pr_number=pr_number)
+            branch = pr['headRefName']
+            task = review_agent.get_reviewer_prompt(reviewer_id=agent_id, repo=repo, pr_number=pr_number, branch=branch)
             print(task)
             spawn_fix_agent(pr, task=task, agent_id=agent_id)
             print(f"Spawned review for PR #{pr_number} by agent {agent_id}")
