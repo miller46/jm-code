@@ -1,6 +1,11 @@
-import json
-import subprocess
+import os
 from dataclasses import dataclass
+
+import requests
+
+GATEWAY_URL = os.environ.get("OPENCLAW_GATEWAY_URL", "http://127.0.0.1:18789")
+TOKEN = os.environ["OPENCLAW_GATEWAY_TOKEN"]
+
 
 @dataclass
 class QueueItem:
@@ -11,19 +16,40 @@ class QueueItem:
     head_sha: str
     suggested_agent: str | None = None
 
-def openclaw_tool(tool: str, params: dict) -> dict:
-    """
-    Deterministic wrapper around your OpenClaw API/CLI bridge.
-    Replace this with your real transport (HTTP gateway, local bridge, etc).
-    """
-    # Example placeholder: call your existing bridge script
-    proc = subprocess.run(
-        ["python3", "scripts/openclaw_rpc.py", tool, json.dumps(params)],
-        capture_output=True, text=True, check=False
+
+def openclaw_tool(
+    tool: str,
+    params: dict,
+    session_key: str | None = None,
+    channel: str | None = None,
+    account_id: str | None = None,
+) -> dict:
+    headers = {
+        "Authorization": f"Bearer {TOKEN}",
+        "Content-Type": "application/json",
+    }
+    if channel:
+        headers["x-openclaw-message-channel"] = channel
+    if account_id:
+        headers["x-openclaw-account-id"] = account_id
+
+    payload = {
+        "tool": tool,
+        "action": "json",
+        "args": params,
+    }
+    if session_key:
+        payload["sessionKey"] = session_key
+
+    r = requests.post(
+        f"{GATEWAY_URL}/tools/invoke", headers=headers, json=payload, timeout=600
     )
-    if proc.returncode != 0:
-        raise RuntimeError(proc.stderr.strip() or f"{tool} failed")
-    return json.loads(proc.stdout)
+    if not r.ok:
+        raise RuntimeError(f"Gateway {r.status_code}: {r.text}")
+    data = r.json()
+    if not data.get("ok", False):
+        raise RuntimeError(data)
+    return data["result"]
 
 def choose_agent(item: QueueItem) -> str:
     return item.suggested_agent or "backend-dev"
