@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 
-import workflow_config
+import github.workflow_config as workflow_config
 
 DEFAULT_DB_PATH = os.environ.get("GITHUB_SYNC_DB_PATH", "/Users/jack/.openclaw/workspace-manager/workflow.db")
 DEFAULT_CONFIG_PATH = os.environ.get("WORKFLOW_REPOS_CONFIG", "config/repos.json")
