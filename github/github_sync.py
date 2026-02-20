@@ -423,12 +423,13 @@ def determine_pr_action(
 
     has_conflicts = _casefold_eq(mergeable, "CONFLICTING") or _casefold_eq(merge_state, "DIRTY")
 
-    # Determine last_reviewed_sha
+    # Determine last_reviewed_sha – always update from latest review so
+    # sha_matches reflects the *current* review, not a stale DB value.
     last_reviewed_sha = existing.last_reviewed_sha if existing else None
     if ev.all_required_approved and ev.latest_review_sha == head_sha:
         last_reviewed_sha = head_sha
-    elif (ev.any_changes_requested or ev.all_required_approved) and not last_reviewed_sha:
-        last_reviewed_sha = ev.latest_review_sha or head_sha
+    elif ev.any_changes_requested or ev.all_required_approved:
+        last_reviewed_sha = ev.latest_review_sha or last_reviewed_sha or head_sha
 
     sha_matches = head_sha == last_reviewed_sha if last_reviewed_sha else False
     print(

@@ -1,0 +1,21 @@
+{
+    "number": 69,
+    "title": "Harden auth flow for internet exposure",
+    "state": "OPEN",
+    "headRefOid": "85c55d3de2dd7f3e16d423742ddaa0233c53a848",
+    "mergeable": "MERGEABLE",
+    "mergeStateStatus": "CLEAN",
+    "reviews": [
+        {
+            "author": {"login": "miller46architect"},
+            "state": "CHANGES_REQUESTED",
+            "commit": {"oid": "85c55d3de2dd7f3e16d423742ddaa0233c53a848"},
+            "body": "VERDICT: REQUEST_CHANGES - Two blocking issues found.",
+            "submittedAt": "2026-02-20T19:30:00Z"
+        }
+    ],
+    "createdAt": "2026-02-20T18:06:46Z",
+    "updatedAt": "2026-02-20T19:55:29Z",
+    "body": "Harden auth flow for internet exposure. Fixes #68",
+    "author": {"login": "miller46"}
+}

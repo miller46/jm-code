@@ -1,0 +1,32 @@
+{
+      "id": "a63695c8-d5b2-4b90-a3b4-335baa71c431",
+      "agentId": "manager",
+      "name": "issue-triage",
+      "enabled": true,
+      "createdAtMs": 1771547699971,
+      "updatedAtMs": 1771619532257,
+      "schedule": {
+        "kind": "cron",
+        "expr": "*/10 8-20 * * 1-5"
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "Run issue triage using deterministic tool output only.\n\n1) Call get_open_issues:\ncd ~/.openclaw/workspace-manager && python3 scripts/get_open_issues.py --db workflow.db --config scripts/repos_config.json\n\nOr with JSON input for filters:\necho '{\"limit\": 10, \"includeSuggestedAgent\": true, \"excludeAlreadyDispatched\": true, \"excludeClaimed\": true}' | python3 scripts/get_open_issues.py --db workflow.db --config scripts/repos_config.json\n\n(Do NOT pass repos; let the tool use all enabled repos by default.)\n\n2) If result has zero issues, reply exactly: NO_REPLY\n\n3) For each returned issue:\n- Choose agentId:\n - use suggestedAgent if present\n - fallback: backend-dev\n- Spawn with sessions_spawn task text:\n Implement issue #{{issueNumber}} in {{repo}}: {{title}}.\n\n Required workflow (must follow all steps):\n 1) Create a new branch from latest main.\n 2) Implement the fix/feature.\n 3) Add/update tests as needed.\n 4) Run relevant tests/lint locally.\n 5) Commit changes with a clear message.\n 6) Push the branch to origin.\n 7) Open a pull request targeting main.\n 8) In PR description include: Fixes #{{issueNumber}}.\n9)Make PR description descriptive and nicely formatted.\n\n Output requirements:\n - Return the PR URL in your final response.\n - Also include branch name and commit SHA.\n\n If you cannot open a PR, explicitly return:\n - failure_reason\n - last successful step completed\n - exact command/error that failed.\n- After successful spawn, call mark_issue_dispatched for that itemId + agentId.\n\n4) If spawn fails, do NOT mark dispatched.\n\n5) At end:\n- If any spawns succeeded, send one summary message:\n 🎯 Spawned {n} issue agent(s): #{num}->{agent}, ...\n- Otherwise reply NO_REPLY.\n\nRules:\n- Do not query GitHub directly.\n- Do not do lock-file logic.\n- Do not infer extra candidates.\n- Trust get_open_issues as source of truth.",
+        "model": "kimi-coding/k2p5",
+        "timeoutSeconds": 300
+      },
+      "delivery": {
+        "mode": "announce",
+        "to": "404142725",
+        "bestEffort": true
+      },
+      "state": {
+        "nextRunAtMs": 1771620000000,
+        "lastRunAtMs": 1771619400010,
+        "lastStatus": "ok",
+        "lastDurationMs": 132247,
+        "consecutiveErrors": 0
+      }
+    }
