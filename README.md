@@ -2,6 +2,10 @@
 
 Bots to enable agents to write code, review pull requests, fix issues, and merge while enforcing high standards for quality. 
 
+`bot.py` is the entry point and contains the primary workflow logic. 
+
+NOTE: Spec creation, GitHub issue creation, and assigning the initial dev work are currently handled by OpenClaw cron jobs. See `/cron`
+
 ## Workflow
 
 This system automates the full coding lifecycle:
@@ -22,7 +26,8 @@ A sync loop continuously evaluates GitHub issues and PRs, then dispatches Claude
 
 ## How it works
 
-- `bot.py` — Entry point. Runs the sync + dispatch loop.
+- `bot.py` — Entry point. Runs the sync and dispatch loop. Main logic is here.
+- `sync_bot.py` — Separate process to run GitHub sync if you want to decouple them.
 - `github/github_sync.py` — State machine. Maps GitHub state to worfklow state into SQLite and determines the next action per PR.
 - `workflow/tasks.py` — Dispatches agents based on computed actions.
 - `agent/review_agent.py` — Spawns OpenClaw agents for reviews, fixes, and conflict resolution.
