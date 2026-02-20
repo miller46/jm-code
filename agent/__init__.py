@@ -68,7 +68,7 @@ def spawn_fix_agent(pr: dict, task:str, agent_id:str=None, timeout=1800, cleanup
     return openclaw_tool("sessions_spawn", {
         "task": task,
         "agentId": agent_id,
-        "label": f"fix:{item.repo}#{item.pr_number}",
+        "label": f"{item.repo}#{item.pr_number}",
         "runTimeoutSeconds": timeout,
         "cleanup": cleanup
     })
