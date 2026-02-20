@@ -16,11 +16,27 @@
       "template": "prompts/review/architect.md",
       "timeout": 900,
       "focus": "design, security, and maintainability"
+    },
+    {
+      "name": "miller46frontenddev",
+      "agent": "frontend-dev",
+      "gh_config_dir": "~/.openclaw/agents/frontend-dev/agent",
+      "template": "prompts/review/ux.md",
+      "timeout": 900,
+      "focus": "ux, design, and ergonomics"
+    },
+    {
+      "name": "miller46backenddev",
+      "agent": "backend-dev",
+      "gh_config_dir": "~/.openclaw/agents/backend-dev/agent",
+      "template": "prompts/review/architect.md",
+      "timeout": 900,
+      "focus": "data modeling, flow, and backend architecture"
     }
   ],
   "approval_rules": {
     "mode": "majority",
-    "min_approvals": 1,
+    "min_approvals": 2,
     "required_reviewers": [],
     "veto_powers": []
   }
