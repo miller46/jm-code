@@ -17,20 +17,20 @@ Code Review → Fix & Re-review (repeat as needed) → Merge → CD
 
 A sync loop continuously evaluates GitHub issues and PRs, then dispatches Claude agents to handle each stage:
 
-1. **Triage** — Open issues are routed to a dev agent (frontend or backend) based on keywords
-2. **Implement** — Dev agent writes code, opens a PR
-3. **Review** — Reviewer agents (architect, code-snob, etc.) review the PR
-4. **Fix** — If changes are requested, a dev agent addresses the feedback
-5. **Re-review** — Reviewer agents re-review. Steps 4-5 repeat until approved.
-6. **Merge** — Auto-merges approved PRs with no conflicts
+1. **Triage**  Open issues are routed to a dev agent (frontend or backend) based on keywords
+2. **Implement**  Dev agent writes code, opens a PR
+3. **Review**  Reviewer agents (architect, code-snob, etc.) review the PR
+4. **Fix**  If changes are requested, a dev agent addresses the feedback
+5. **Re-review**  Reviewer agents re-review. Steps 4-5 repeat until approved.
+6. **Merge**  Auto-merges approved PRs with no conflicts
 
 ## How it works
 
-- `bot.py` — Entry point. Runs the sync and dispatch loop. Main logic is here.
-- `sync_bot.py` — Separate process to run GitHub sync if you want to decouple them.
-- `github/github_sync.py` — State machine. Maps GitHub state to worfklow state into SQLite and determines the next action per PR.
-- `workflow/tasks.py` — Dispatches agents based on computed actions.
-- `agent/review_agent.py` — Spawns OpenClaw agents for reviews, fixes, and conflict resolution.
+- `bot.py`  Entry point. Runs the sync and dispatch loop. Main logic is here.
+- `sync_bot.py`  Separate process to run GitHub sync if you want to decouple them.
+- `github/github_sync.py`  State machine. Maps GitHub state to worfklow state into SQLite and determines the next action per PR.
+- `workflow/tasks.py`  Dispatches agents based on computed actions.
+- `agent/review_agent.py`  Spawns OpenClaw agents for reviews, fixes, and conflict resolution.
 
 ## Config
 
@@ -46,12 +46,12 @@ A sync loop continuously evaluates GitHub issues and PRs, then dispatches Claude
 
 ### `config/default_reviewers.json` — Reviewer agents and approval rules
 
-Defines which agents review PRs, their focus areas, and approval thresholds. Per-repo overrides go in `repos/{owner}/{repo}/config/reviewers.json`.
+Defines which agents review PRs, their focus areas, and approval thresholds. 
+
+Per-repo overrides go in `repos/{owner}/{repo}/config/reviewers.json`.
 
 ### `config/workflow.json` — Action dispatch settings
 
-Configures agent routing (frontend vs backend keywords), lock durations, timeouts, and merge strategy. Per-repo overrides go in `repos/{owner}/{repo}/config/workflow.json`.
+Configures agent routing and merge approval criteria. 
 
-## Stack
-
-Python, SQLite, GitHub CLI (`gh`)
+Per-repo overrides go in `repos/{owner}/{repo}/config/workflow.json`.
