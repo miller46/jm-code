@@ -1,6 +1,7 @@
 import logging
 import sys
 import os
+import time
 
 logging.basicConfig(format='%(asctime)-15s %(levelname)-8s %(name)s %(message)s', level=logging.INFO)
 
@@ -21,23 +22,23 @@ class Bot(BotWithRedisRemoteConfig):
         pass
 
     def on_run_loop(self):
-        self.logging.info("Loop Start")
+        self.logging.info("Start Loop")
 
         self.logging.info("Start GitHub sync")
         github_sync.sync()
 
         self.logging.info("Start Issues dev")
         with IssueQueueClient() as issue_client:
-            tasks.dev_open_issues(issue_client)
+            issues = tasks.dev_open_issues(issue_client)
 
         self.logging.info("Start PR reviews")
         with PRQueueClient() as pr_client:
-            tasks.review_open_prs(pr_client)
-            tasks.fix_open_prs(pr_client)
-            tasks.fix_pr_merge_conflicts(pr_client)
-            tasks.fix_status_checks(pr_client)
-            tasks.merge_prs(pr_client)
-        self.logging.info("End Start")
+            merged = tasks.merge_prs(pr_client)
+            open_prs = tasks.fix_open_prs(pr_client)
+            merge_conflicts = tasks.fix_pr_merge_conflicts(pr_client)
+            status_checks = tasks.fix_status_checks(pr_client)
+            reviewed = tasks.review_open_prs(pr_client)
+        self.logging.info("End Loop")
 
     def on_shutdown(self):
         self.logging.info("Shutdown")

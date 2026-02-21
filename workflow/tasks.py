@@ -21,6 +21,7 @@ def dev_open_issues(client:IssueQueueClient):
         logger.debug("prompt: %s", prompt)
         spawn_agent(f"{repo}#{issue_number}", prompt=prompt, agent_id=agent_id)
         logger.info("Spawned DEV for Issue #%s by agent %s", issue_number, agent_id)
+    return len(issue_response["issues"])
 
 def review_open_prs(client:PRQueueClient):
     review_response = client.query(action="needs_review", limit=10)
@@ -40,6 +41,7 @@ def review_open_prs(client:PRQueueClient):
             logger.debug("prompt: %s", prompt)
             spawn_agent(f"{repo}#{pr_number}", prompt=prompt, agent_id=agent_id)
             logger.info("Spawned REVIEW for PR #%s by agent %s", pr_number, agent_id)
+    return len(review_response["prs"])
 
 def fix_open_prs(client:PRQueueClient):
     fixes_response = client.query(action="needs_fix", limit=10)
@@ -55,6 +57,7 @@ def fix_open_prs(client:PRQueueClient):
         prompt = dev_agent.get_pr_fix_prompt(repo=repo, pr_number=pr_number, branch=branch)
         logger.debug("prompt: %s", prompt)
         spawn_agent(f"{repo}#{pr_number}", agent_id=agent_id, prompt=prompt)
+    return len(fixes_response["prs"])
 
 def fix_pr_merge_conflicts(client:PRQueueClient):
     conflicts_response = client.query(action="needs_conflict_resolution", limit=10)
@@ -70,6 +73,7 @@ def fix_pr_merge_conflicts(client:PRQueueClient):
         logger.debug("prompt: %s", prompt)
         spawn_agent(f"{repo}#{pr_number}", agent_id=agent_id, prompt=prompt)
         logger.info("Spawned MERGE CONFLICT FIX for PR #%s by %s", pr['prNumber'], agent_id)
+    return len(conflicts_response["prs"])
 
 def fix_status_checks(client:PRQueueClient):
     status_response = client.query(action="needs_status_fix", limit=10)
@@ -85,6 +89,7 @@ def fix_status_checks(client:PRQueueClient):
         logger.debug("prompt: %s", prompt)
         spawn_agent(f"{repo}#{pr_number}", agent_id=agent_id, prompt=prompt)
         logger.info("Spawned STATUS FIX for PR #%s by %s", pr_number, agent_id)
+    return len(status_response["prs"])
 
 def merge_prs(client:PRQueueClient):
     merges_response = client.query(action="ready_to_merge", limit=10)
@@ -98,3 +103,4 @@ def merge_prs(client:PRQueueClient):
             logger.info("Merged PR #%s in %s", pr_number, repo)
         else:
             logger.error("Failed to merge PR #%s in %s: %s", pr_number, repo, result['error'])
+    return len(merges_response["prs"])
