@@ -1,0 +1,16 @@
+{
+  "agents": [
+    {
+      "id": "miller46backenddev",
+      "name": "miller46backenddev",
+      "agent": "backend-dev",
+      "enabled": true
+    },
+    {
+      "id": "miller46frontenddev",
+      "name": "miller46frontenddev",
+      "agent": "frontend-dev",
+      "enabled": true
+    }
+  ]
+}
