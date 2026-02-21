@@ -17,29 +17,29 @@ from github import github_sync
 class Bot(BotWithRedisRemoteConfig):
 
     def on_startup(self):
-        self.logger.info("Startup")
+        self.logging.info("Startup")
         pass
 
     def on_run_loop(self):
-        self.logger.info("Loop Start")
+        self.logging.info("Loop Start")
 
-        self.logger.info("Start GitHub sync")
+        self.logging.info("Start GitHub sync")
         github_sync.sync()
 
-        self.logger.info("Start Issues dev")
+        self.logging.info("Start Issues dev")
         with IssueQueueClient() as issue_client:
             tasks.dev_open_issues(issue_client)
 
-        self.logger.info("Start PR reviews")
+        self.logging.info("Start PR reviews")
         with PRQueueClient() as pr_client:
             tasks.review_open_prs(pr_client)
             tasks.fix_open_prs(pr_client)
             tasks.fix_pr_merge_conflicts(pr_client)
             tasks.merge_prs(pr_client)
-        self.logger.info("End Start")
+        self.logging.info("End Start")
 
     def on_shutdown(self):
-        self.logger.info("Shutdown")
+        self.logging.info("Shutdown")
         pass
 
 

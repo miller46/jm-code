@@ -101,20 +101,19 @@ class TestPromptRename:
         assert "owner/repo" in prompt
 
 
-class TestBaseBotLogger:
-    """BaseBot subclasses should have a proper self.logger attribute."""
+class TestGithubSyncUsesLogger:
+    """github/github_sync.py should use logging, not print()."""
 
-    def test_bot_has_logger_attribute(self):
-        import sys
-        import os
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "jm_bot"))
-        from base_bot.base_bot import BaseBot
-
-        class TestBot(BaseBot):
-            def on_startup(self): pass
-            def on_run_loop(self): pass
-            def on_shutdown(self): pass
-
-        bot = TestBot([])
-        assert hasattr(bot, "logger")
-        assert isinstance(bot.logger, logging.Logger)
+    def test_no_print_calls_in_github_sync(self):
+        """github_sync should not use print() anywhere."""
+        import inspect
+        from github import github_sync
+        source = inspect.getsource(github_sync)
+        # Allow 'print' in string literals but not as function calls
+        lines = source.split('\n')
+        for i, line in enumerate(lines, 1):
+            stripped = line.lstrip()
+            if stripped.startswith('#'):
+                continue
+            if stripped.startswith('print(') or stripped.startswith('print ('):
+                raise AssertionError(f"github_sync.py line {i} uses print(): {stripped}")

@@ -13,19 +13,19 @@ from github import github_sync
 class SyncBot(BotWithRedisRemoteConfig):
 
     def on_startup(self):
-        self.logger.info("Startup")
+        self.logging.info("Startup")
         pass
 
     def on_run_loop(self):
-        self.logger.info("Loop Start")
+        self.logging.info("Loop Start")
 
-        self.logger.info("Start GitHub sync")
+        self.logging.info("Start GitHub sync")
         github_sync.sync()
-        self.logger.info("End GitHub sync")
+        self.logging.info("End GitHub sync")
         pass
 
     def on_shutdown(self):
-        self.logger.info("Shutdown")
+        self.logging.info("Shutdown")
         pass
 
 
