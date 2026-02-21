@@ -7,6 +7,12 @@ Bot that syncs with GitHub and spawns agents to write code, review pull request,
 Issue → Dev Agent → PR → Review Agents → Fix/Re-review loop → Merge
 ```
 
+## Projects Built By Agents Using `jm-code`
+
+* https://github.com/miller46/agent-command-center
+* https://github.com/miller46/jm-api
+
+
 ## Sync States
 
 ### Issues
