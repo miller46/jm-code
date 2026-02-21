@@ -52,6 +52,7 @@ def _make_existing(
     last_fix_dispatch_sha=None,
     last_merge_dispatch_sha=None,
     last_conflict_dispatch_sha=None,
+    last_status_fix_dispatch_sha=None,
 ) -> WorkflowItem:
     """Helper to build a minimal WorkflowItem for testing."""
     now = datetime.now(timezone.utc).isoformat()
@@ -77,7 +78,9 @@ def _make_existing(
         last_fix_dispatch_sha=last_fix_dispatch_sha,
         last_merge_dispatch_sha=last_merge_dispatch_sha,
         last_conflict_dispatch_sha=last_conflict_dispatch_sha,
+        last_status_fix_dispatch_sha=last_status_fix_dispatch_sha,
         last_head_sha_seen="abc123",
+        status_check_rollup=None,
         iteration=iteration,
         max_iterations=MAX_ITERATIONS,
         assigned_agent=None,
@@ -771,3 +774,108 @@ class TestDirectReviewerIdentity:
         ]
         ev = evaluate_reviews(reviews, ["code-snob", "architect"])
         assert ev.all_required_approved is True
+
+
+# ── CHECKS_FAILING state machine tests ──────────────────────────────────────
+
+class TestChecksFailing:
+    def test_checks_failing_needs_status_fix(self):
+        """mergeStateStatus=UNSTABLE → CHECKS_FAILING / NEEDS_STATUS_FIX."""
+        reviews = [
+            _make_review("code-snob", "APPROVED", "abc123"),
+            _make_review("architect", "APPROVED", "abc123"),
+        ]
+        pr_detail = {
+            "state": "OPEN",
+            "headRefOid": "abc123",
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "UNSTABLE",
+            "reviews": reviews,
+        }
+        existing = _make_existing(last_reviewed_sha="abc123")
+        status, action, *_ = determine_pr_action(
+            pr_detail, existing, required_reviewers=["code-snob", "architect"]
+        )
+        assert status == Status.CHECKS_FAILING
+        assert action == Action.NEEDS_STATUS_FIX
+
+    def test_checks_failing_with_approval_still_blocks_merge(self):
+        """Approved but unstable → still CHECKS_FAILING (not READY_TO_MERGE)."""
+        reviews = [
+            _make_review("code-snob", "APPROVED", "abc123"),
+            _make_review("architect", "APPROVED", "abc123"),
+        ]
+        pr_detail = {
+            "state": "OPEN",
+            "headRefOid": "abc123",
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "UNSTABLE",
+            "reviews": reviews,
+        }
+        existing = _make_existing(last_reviewed_sha="abc123")
+        status, action, *_ = determine_pr_action(
+            pr_detail, existing, required_reviewers=["code-snob", "architect"]
+        )
+        assert status != Status.APPROVED
+        assert action != Action.READY_TO_MERGE
+
+    def test_checks_failing_no_reviews(self):
+        """UNSTABLE with no reviews → CHECKS_FAILING / NEEDS_STATUS_FIX."""
+        pr_detail = {
+            "state": "OPEN",
+            "headRefOid": "abc123",
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "UNSTABLE",
+            "reviews": [],
+        }
+        status, action, *_ = determine_pr_action(
+            pr_detail, None, required_reviewers=["code-snob", "architect"]
+        )
+        assert status == Status.CHECKS_FAILING
+        assert action == Action.NEEDS_STATUS_FIX
+
+
+class TestStatusFixDedupe:
+    def test_status_fix_deduped(self):
+        """Already dispatched for same SHA → NONE."""
+        result = apply_dispatch_dedupe(
+            action=Action.NEEDS_STATUS_FIX,
+            head_sha="abc123",
+            last_review_dispatch_sha=None,
+            last_fix_dispatch_sha=None,
+            last_merge_dispatch_sha=None,
+            last_conflict_dispatch_sha=None,
+            last_status_fix_dispatch_sha="abc123",
+        )
+        assert result == Action.NONE
+
+    def test_status_fix_new_sha_allowed(self):
+        """New SHA → NEEDS_STATUS_FIX passes through."""
+        result = apply_dispatch_dedupe(
+            action=Action.NEEDS_STATUS_FIX,
+            head_sha="new_sha",
+            last_review_dispatch_sha=None,
+            last_fix_dispatch_sha=None,
+            last_merge_dispatch_sha=None,
+            last_conflict_dispatch_sha=None,
+            last_status_fix_dispatch_sha="old_sha",
+        )
+        assert result == Action.NEEDS_STATUS_FIX
+
+
+class TestStatusFixDispatchPersistence:
+    def test_mark_dispatched_status_fix(self, tmp_db):
+        """mark_dispatched writes last_status_fix_dispatch_sha to DB."""
+        with patch("github_sync.DB_PATH", tmp_db):
+            item = _make_existing()
+            save_item(item)
+            mark_dispatched(item.id, "status_fix", "sha_xyz")
+
+            conn = sqlite3.connect(tmp_db)
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                "SELECT last_status_fix_dispatch_sha FROM workflow_items WHERE id = ?",
+                (item.id,)
+            ).fetchone()
+            conn.close()
+            assert row["last_status_fix_dispatch_sha"] == "sha_xyz"

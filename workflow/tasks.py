@@ -71,6 +71,21 @@ def fix_pr_merge_conflicts(client:PRQueueClient):
         spawn_agent(f"{repo}#{pr_number}", agent_id=agent_id, prompt=prompt)
         logger.info("Spawned MERGE CONFLICT FIX for PR #%s by %s", pr['prNumber'], agent_id)
 
+def fix_status_checks(client:PRQueueClient):
+    status_response = client.query(action="needs_status_fix", limit=10)
+    logger.info("Found %s PRs needing status fix", status_response['counts']['returned'])
+    for pr in status_response["prs"]:
+        pr_number = pr["prNumber"]
+        repo = pr["repo"]
+        description = pr["title"]
+        agent_id = _suggest_agent(title=description, labels=[], default_agent=DEFAULT_DEV_AGENT)
+        logger.info("Init status fix for PR #%s by agent %s", pr_number, agent_id)
+        branch = pr['headRefName']
+        prompt = dev_agent.get_pr_fix_status_checks_prompt(repo=repo, pr_number=pr_number, branch=branch)
+        logger.debug("prompt: %s", prompt)
+        spawn_agent(f"{repo}#{pr_number}", agent_id=agent_id, prompt=prompt)
+        logger.info("Spawned STATUS FIX for PR #%s by %s", pr_number, agent_id)
+
 def merge_prs(client:PRQueueClient):
     merges_response = client.query(action="ready_to_merge", limit=10)
     logger.info("Found %s PRs ready to merge", merges_response['counts']['returned'])

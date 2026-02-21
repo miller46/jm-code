@@ -85,7 +85,9 @@ def _make_existing(item_id, **kwargs):
         last_fix_dispatch_sha=None,
         last_merge_dispatch_sha=None,
         last_conflict_dispatch_sha=None,
+        last_status_fix_dispatch_sha=None,
         last_head_sha_seen=HEAD_SHA,
+        status_check_rollup=None,
         iteration=0,
         max_iterations=MAX_ITERATIONS,
         assigned_agent=None,
@@ -653,3 +655,29 @@ class TestFullLifecycle:
         assert pr["action"] == "ready_to_merge"
         assert pr["all_reviewers_approved"] == 1
         assert pr["head_sha"] == sha_v2
+
+
+# ── Scenario 16: PR with failing CI checks ──────────────────────────────────
+
+
+class TestPrChecksFailing:
+    """Approved PR but mergeStateStatus=UNSTABLE (failing CI) →
+    CHECKS_FAILING / NEEDS_STATUS_FIX."""
+
+    def test_sync_pr_checks_failing(self, tmp_db):
+        pr_list = load_fixture("scenario_pr_list.json")
+        pr_detail = load_fixture("scenario_pr_detail_checks_failing.json")
+        with (
+            patch("github_sync.DB_PATH", tmp_db),
+            patch("github_sync.fetch_issues", return_value=[]),
+            patch("github_sync.fetch_prs", return_value=pr_list),
+            patch("github_sync.fetch_pr_detail", return_value=pr_detail),
+            patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
+        ):
+            count = sync_repo(REPO)
+
+        items = _read_items(tmp_db)
+        pr = items[0]
+        assert pr["status"] == "checks_failing"
+        assert pr["action"] == "needs_status_fix"

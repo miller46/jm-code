@@ -35,6 +35,7 @@ class Bot(BotWithRedisRemoteConfig):
             tasks.review_open_prs(pr_client)
             tasks.fix_open_prs(pr_client)
             tasks.fix_pr_merge_conflicts(pr_client)
+            tasks.fix_status_checks(pr_client)
             tasks.merge_prs(pr_client)
         self.logging.info("End Start")
 

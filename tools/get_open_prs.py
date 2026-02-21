@@ -22,6 +22,7 @@ VALID_ACTIONS: set[str] = {
     "needs_review",
     "needs_fix",
     "needs_conflict_resolution",
+    "needs_status_fix",
     "ready_to_merge",
     "max_iterations_reached",
 }
@@ -30,6 +31,7 @@ DISPATCH_TYPE_MAP: dict[str, str] = {
     "needs_review": "review",
     "needs_fix": "fix",
     "needs_conflict_resolution": "conflict",
+    "needs_status_fix": "status_fix",
     "ready_to_merge": "merge",
     "max_iterations_reached": "alert",
 }
@@ -39,9 +41,10 @@ DISPATCH_SHA_COL_MAP: dict[str, tuple[str, ...]] = {
     "needs_fix": ("last_fix_dispatch_sha", "lastFixDispatchSha"),
     "ready_to_merge": ("last_merge_dispatch_sha", "lastMergeDispatchSha"),
     "needs_conflict_resolution": ("last_conflict_dispatch_sha", "lastConflictDispatchSha"),
+    "needs_status_fix": ("last_status_fix_dispatch_sha", "lastStatusFixDispatchSha"),
 }
 
-_DEV_AGENT_DEFAULT_ACTIONS: set[str] = {"needs_fix", "needs_conflict_resolution"}
+_DEV_AGENT_DEFAULT_ACTIONS: set[str] = {"needs_fix", "needs_conflict_resolution", "needs_status_fix"}
 
 
 @dataclass(slots=True)

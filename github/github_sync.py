@@ -62,6 +62,7 @@ class Action(Enum):
     IN_REVIEW = "in_review"  # Reviews in progress, waiting for reviewers
     NEEDS_FIX = "needs_fix"  # PR has changes_requested, needs dev fix
     NEEDS_CONFLICT_RESOLUTION = "needs_conflict_resolution"  # Merge conflicts
+    NEEDS_STATUS_FIX = "needs_status_fix"  # CI status checks failing
     READY_TO_MERGE = "ready_to_merge"  # Approved, no conflicts, SHA matches
     MAX_ITERATIONS_REACHED = "max_iterations_reached"  # Manual intervention needed
     DISPATCHED = "dispatched"  # Agent spawned, awaiting result
@@ -80,6 +81,7 @@ class Status(Enum):
     APPROVED = "approved"
     MERGED = "merged"
     CONFLICTING = "conflicting"
+    CHECKS_FAILING = "checks_failing"
 
 
 def make_item_id(repo: str, item_type: ItemType, number: int) -> str:
@@ -118,7 +120,11 @@ class WorkflowItem:
     last_fix_dispatch_sha: Optional[str]
     last_merge_dispatch_sha: Optional[str]
     last_conflict_dispatch_sha: Optional[str]
+    last_status_fix_dispatch_sha: Optional[str]
     last_head_sha_seen: Optional[str]
+
+    # CI status check rollup
+    status_check_rollup: Optional[str]  # JSON string of statusCheckRollup
 
     # Iteration tracking (for changes_requested cycles)
     iteration: int
@@ -166,7 +172,11 @@ CREATE TABLE IF NOT EXISTS workflow_items (
     last_fix_dispatch_sha TEXT,
     last_merge_dispatch_sha TEXT,
     last_conflict_dispatch_sha TEXT,
+    last_status_fix_dispatch_sha TEXT,
     last_head_sha_seen TEXT,
+
+    -- CI status check rollup
+    status_check_rollup TEXT,
 
     -- Iteration tracking
     iteration INTEGER DEFAULT 0,
@@ -313,8 +323,8 @@ def evaluate_reviews(
 
 ISSUE_FIELDS = ["number", "title", "state", "createdAt", "updatedAt", "body", "labels", "author", "closed", "closedAt"]
 PR_LIST_FIELDS = ["number", "title", "state", "createdAt", "updatedAt", "author", "headRefName", "body"]
-PR_DETAIL_FIELDS = ["number", "title", "state", "headRefOid", "mergeable", "mergeStateStatus", "reviews", "createdAt",
-                    "updatedAt", "body", "author"]
+PR_DETAIL_FIELDS = ["number", "title", "state", "headRefOid", "mergeable", "mergeStateStatus", "reviews",
+                    "statusCheckRollup", "createdAt", "updatedAt", "body", "author"]
 
 
 def gh_api(args: List[str], fields: List[str] = None) -> dict:
@@ -361,6 +371,7 @@ def apply_dispatch_dedupe(
         last_fix_dispatch_sha: Optional[str],
         last_merge_dispatch_sha: Optional[str],
         last_conflict_dispatch_sha: Optional[str] = None,
+        last_status_fix_dispatch_sha: Optional[str] = None,
 ) -> Action:
     """Return Action.NONE when action for this SHA was already dispatched."""
     sha_short = head_sha[:8] if head_sha else "None"
@@ -375,6 +386,9 @@ def apply_dispatch_dedupe(
         return Action.NONE
     if action == Action.NEEDS_CONFLICT_RESOLUTION and head_sha and head_sha == last_conflict_dispatch_sha:
         logger.debug("dedupe: NEEDS_CONFLICT_RESOLUTION already dispatched for %s -> suppressed", sha_short)
+        return Action.NONE
+    if action == Action.NEEDS_STATUS_FIX and head_sha and head_sha == last_status_fix_dispatch_sha:
+        logger.debug("dedupe: NEEDS_STATUS_FIX already dispatched for %s -> suppressed", sha_short)
         return Action.NONE
     return action
 
@@ -453,6 +467,11 @@ def determine_pr_action(
     if has_conflicts:
         logger.debug("-> RULE 2: CONFLICTS  approved=%s  status=conflicting  action=needs_conflict_resolution", ev.all_required_approved)
         return Status.CONFLICTING, Action.NEEDS_CONFLICT_RESOLUTION, ev.all_required_approved, ev.any_changes_requested, ev.latest_decision_by_reviewer, last_reviewed_sha
+
+    # Rule 2.5: failing CI checks → needs status fix (takes priority over review state)
+    if _casefold_eq(merge_state, "UNSTABLE"):
+        logger.debug("-> RULE 2.5: CHECKS FAILING  approved=%s  status=checks_failing  action=needs_status_fix", ev.all_required_approved)
+        return Status.CHECKS_FAILING, Action.NEEDS_STATUS_FIX, ev.all_required_approved, ev.any_changes_requested, ev.latest_decision_by_reviewer, last_reviewed_sha
 
     # Rule 3 & 4: all required approved
     if ev.all_required_approved:
@@ -546,7 +565,9 @@ def get_existing_item(item_id: str) -> Optional[WorkflowItem]:
         last_fix_dispatch_sha=row["last_fix_dispatch_sha"],
         last_merge_dispatch_sha=row["last_merge_dispatch_sha"],
         last_conflict_dispatch_sha=row["last_conflict_dispatch_sha"],
+        last_status_fix_dispatch_sha=row["last_status_fix_dispatch_sha"],
         last_head_sha_seen=row["last_head_sha_seen"],
+        status_check_rollup=row["status_check_rollup"],
         iteration=row["iteration"],
         max_iterations=row["max_iterations"],
         assigned_agent=row["assigned_agent"],
@@ -565,10 +586,12 @@ def save_item(item: WorkflowItem):
             id, type, repo, number, title, github_state, repo_scoped_id,
             status, action, head_sha, head_ref_name, last_reviewed_sha, reviews_json,
             all_reviewers_approved, any_changes_requested, sha_matches_review, has_conflicts,
-            last_review_dispatch_sha, last_fix_dispatch_sha, last_merge_dispatch_sha, last_conflict_dispatch_sha, last_head_sha_seen,
+            last_review_dispatch_sha, last_fix_dispatch_sha, last_merge_dispatch_sha,
+            last_conflict_dispatch_sha, last_status_fix_dispatch_sha, last_head_sha_seen,
+            status_check_rollup,
             iteration, max_iterations, assigned_agent, lock_expires,
             created_at, updated_at, last_sync
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         item.id, item.type.value, item.repo, item.number, item.title, item.github_state,
         item.repo_scoped_id,
@@ -577,7 +600,9 @@ def save_item(item: WorkflowItem):
         item.all_reviewers_approved, item.any_changes_requested,
         item.sha_matches_review, item.has_conflicts,
         item.last_review_dispatch_sha, item.last_fix_dispatch_sha,
-        item.last_merge_dispatch_sha, item.last_conflict_dispatch_sha, item.last_head_sha_seen,
+        item.last_merge_dispatch_sha, item.last_conflict_dispatch_sha,
+        item.last_status_fix_dispatch_sha, item.last_head_sha_seen,
+        item.status_check_rollup,
         item.iteration, item.max_iterations, item.assigned_agent, item.lock_expires,
         item.created_at, item.updated_at, item.last_sync
     ))
@@ -599,6 +624,8 @@ def migrate_db():
         "last_head_sha_seen": "ALTER TABLE workflow_items ADD COLUMN last_head_sha_seen TEXT",
         "last_conflict_dispatch_sha": "ALTER TABLE workflow_items ADD COLUMN last_conflict_dispatch_sha TEXT",
         "head_ref_name": "ALTER TABLE workflow_items ADD COLUMN head_ref_name TEXT",
+        "last_status_fix_dispatch_sha": "ALTER TABLE workflow_items ADD COLUMN last_status_fix_dispatch_sha TEXT",
+        "status_check_rollup": "ALTER TABLE workflow_items ADD COLUMN status_check_rollup TEXT",
     }
 
     for col, sql in migrations.items():
@@ -694,6 +721,11 @@ def mark_dispatched(
             "UPDATE workflow_items SET last_conflict_dispatch_sha = ?, last_sync = ? WHERE id = ?",
             (head_sha, now, item_id),
         )
+    elif dispatch_type == "status_fix":
+        conn.execute(
+            "UPDATE workflow_items SET last_status_fix_dispatch_sha = ?, last_sync = ? WHERE id = ?",
+            (head_sha, now, item_id),
+        )
 
     conn.commit()
     conn.close()
@@ -768,7 +800,9 @@ def sync_repo(repo: str) -> int:
             last_fix_dispatch_sha=None,
             last_merge_dispatch_sha=None,
             last_conflict_dispatch_sha=None,
+            last_status_fix_dispatch_sha=None,
             last_head_sha_seen=None,
+            status_check_rollup=None,
             iteration=existing.iteration if existing else 0,
             max_iterations=MAX_ITERATIONS,
             assigned_agent=existing.assigned_agent if existing else None,
@@ -802,6 +836,7 @@ def sync_repo(repo: str) -> int:
         prev_fix_sha = existing.last_fix_dispatch_sha if existing else None
         prev_merge_sha = existing.last_merge_dispatch_sha if existing else None
         prev_conflict_sha = existing.last_conflict_dispatch_sha if existing else None
+        prev_status_fix_sha = existing.last_status_fix_dispatch_sha if existing else None
 
         # Apply iteration logic
         iteration, action = update_iteration(
@@ -812,6 +847,7 @@ def sync_repo(repo: str) -> int:
         action = apply_dispatch_dedupe(
             action, head_sha, prev_review_sha, prev_fix_sha, prev_merge_sha,
             last_conflict_dispatch_sha=prev_conflict_sha,
+            last_status_fix_dispatch_sha=prev_status_fix_sha,
         )
 
         item = WorkflowItem(
@@ -837,7 +873,9 @@ def sync_repo(repo: str) -> int:
             last_fix_dispatch_sha=prev_fix_sha,
             last_merge_dispatch_sha=prev_merge_sha,
             last_conflict_dispatch_sha=prev_conflict_sha,
+            last_status_fix_dispatch_sha=prev_status_fix_sha,
             last_head_sha_seen=head_sha,
+            status_check_rollup=json.dumps(pr_detail.get("statusCheckRollup")) if pr_detail.get("statusCheckRollup") else None,
             iteration=iteration,
             max_iterations=MAX_ITERATIONS,
             assigned_agent=existing.assigned_agent if existing else None,

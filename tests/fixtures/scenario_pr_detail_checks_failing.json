@@ -1,0 +1,40 @@
+{
+    "number": 200,
+    "title": "Implement auth feature",
+    "state": "OPEN",
+    "headRefOid": "aaa111bbb222ccc333ddd444eee555fff66677788",
+    "mergeable": "MERGEABLE",
+    "mergeStateStatus": "UNSTABLE",
+    "reviews": [
+        {
+            "author": {"login": "code-snob"},
+            "state": "APPROVED",
+            "commit": {"oid": "aaa111bbb222ccc333ddd444eee555fff66677788"},
+            "body": "LGTM.",
+            "submittedAt": "2026-02-18T12:00:00Z"
+        },
+        {
+            "author": {"login": "architect"},
+            "state": "APPROVED",
+            "commit": {"oid": "aaa111bbb222ccc333ddd444eee555fff66677788"},
+            "body": "Architecture is solid.",
+            "submittedAt": "2026-02-18T12:01:00Z"
+        }
+    ],
+    "statusCheckRollup": [
+        {
+            "name": "quality-gates",
+            "status": "COMPLETED",
+            "conclusion": "FAILURE",
+            "detailsUrl": "https://github.com/test-org/test-repo/actions/runs/123"
+        },
+        {
+            "name": "integration-tests",
+            "status": "COMPLETED",
+            "conclusion": "SKIPPED",
+            "detailsUrl": "https://github.com/test-org/test-repo/actions/runs/124"
+        }
+    ],
+    "createdAt": "2026-02-18T11:00:00Z",
+    "updatedAt": "2026-02-18T12:01:00Z"
+}

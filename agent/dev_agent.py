@@ -69,3 +69,22 @@ You must commit to THIS EXACT BRANCH: {branch}
 Do NOT open a new pull request.
 """
     )
+
+def get_pr_fix_status_checks_prompt(repo:str, pr_number:str, branch:str) -> str:
+    return (
+f"""Fix failing automated status checks for PR #{pr_number} in {repo} on branch {branch}.
+
+Before changing code, you MUST:
+1) Read PR discussion + review feedback:
+- gh pr view {pr_number} --comments --repo {repo}
+- gh api repos/{repo}/pulls/{pr_number}/comments
+2) Identify the latest review that requested changes.
+3) Make only the changes needed to satisfy that feedback and get checks green.
+
+Rules:
+- Focus on fixing CI/status checks (e.g., GitHub Actions failures).
+- No unrelated refactors, features, or extra tests unless required to fix checks/review comments.
+- Commit directly to branch {branch}.
+- Do NOT open a new PR.
+"""
+    )
