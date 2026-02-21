@@ -1,6 +1,6 @@
 from config.tools import SUBMIT_PR_TOOL_FILE_LOCATION
 
-def get_dev_prompt(repo: str, issue_number: str) -> str:
+def get_dev_prompt(agent_id: str, repo: str, issue_number: str) -> str:
     return (
 f"""Implement issue #{issue_number} in {repo}.
 
@@ -9,7 +9,7 @@ f"""Implement issue #{issue_number} in {repo}.
 3. Implement the fix/feature
 4. Run tests to verify
 5. Commit and push to origin
-6. Open PR using: python3 {SUBMIT_PR_TOOL_FILE_LOCATION} --repo {repo} --head <branch> --base main --title "..." --body "Fixes #{issue_number}"
+6. Open PR using: python3 {SUBMIT_PR_TOOL_FILE_LOCATION} --agentId {agent_id} --repo {repo} --head <branch> --base main --title "..." --body "Fixes #{issue_number}"
 
 Return the PR URL when done.
 """

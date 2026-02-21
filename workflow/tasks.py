@@ -17,7 +17,7 @@ def dev_open_issues(client:IssueQueueClient):
         issue_number = issue["issueNumber"]
         repo = issue["repo"]
         agent_id = _suggest_agent(title=description, labels=[], default_agent=DEFAULT_DEV_AGENT)
-        prompt = dev_agent.get_dev_prompt(repo=repo, issue_number=issue_number)
+        prompt = dev_agent.get_dev_prompt(agent_id=agent_id, repo=repo, issue_number=issue_number)
         logger.debug("prompt: %s", prompt)
         spawn_agent(f"{repo}#{issue_number}", prompt=prompt, agent_id=agent_id)
         logger.info("Spawned DEV for Issue #%s by agent %s", issue_number, agent_id)

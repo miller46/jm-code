@@ -9,10 +9,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
-WORKSPACE_MANAGER_ROOT = Path(
-    os.environ.get("WORKSPACE_MANAGER_ROOT", "/Users/jack/.openclaw/workspace-manager")
-)
-DEFAULT_AGENTS_PATH = WORKSPACE_MANAGER_ROOT / "agents.json"
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_AGENTS_PATH = Path(os.environ.get("WORKFLOW_AGENTS_CONFIG", str(PROJECT_ROOT / "config" / "agents.json")))
 
 ALLOWED_EVENTS = {"create", "create_draft"}
 
@@ -50,7 +49,7 @@ def resolve_agent_config(repo: str) -> tuple[dict[str, Any] | None, str, dict[st
         return None, "", error("INVALID_INPUT", "repo must be in owner/repo format")
 
     owner, name = parsed
-    repo_cfg = WORKSPACE_MANAGER_ROOT / "repos" / owner / name / "config" / "agents.json"
+    repo_cfg = PROJECT_ROOT / "config" / owner / name / "agents.json"
     default_cfg = DEFAULT_AGENTS_PATH
 
     if repo_cfg.exists():
@@ -66,15 +65,6 @@ def resolve_agent_config(repo: str) -> tuple[dict[str, Any] | None, str, dict[st
 
 
 def find_agent(payload: dict[str, Any], agent_id: str) -> dict[str, Any] | None:
-    # Repo-specific format
-    for entry in payload.get("required_reviewers", []):
-        if not isinstance(entry, dict):
-            continue
-        rid = entry.get("id") or entry.get("agent") or entry.get("name")
-        if isinstance(rid, str) and rid.strip() == agent_id:
-            return entry
-
-    # Global format
     for entry in payload.get("agents", []):
         if not isinstance(entry, dict):
             continue
@@ -113,6 +103,33 @@ def get_gh_auth_info(gh_config_dir: str | None, env: dict[str, str]) -> dict[str
         "stdout": proc.stdout,
         "stderr": proc.stderr,
     }
+
+
+def get_gh_auth_user(gh_config_dir: str | None) -> dict[str, Any]:
+    """Get the actual GitHub user from hosts.yml to confirm which token is active."""
+    result = {"config_dir": gh_config_dir, "user": None, "token_prefix": None}
+    
+    if not gh_config_dir:
+        return result
+    
+    hosts_path = Path(gh_config_dir) / "hosts.yml"
+    if hosts_path.exists():
+        try:
+            content = hosts_path.read_text()
+            result["hosts_yml_content"] = content
+            # Extract user from yaml-like content
+            for line in content.split("\n"):
+                if "user:" in line and not line.strip().startswith("#"):
+                    result["user"] = line.split(":")[-1].strip()
+                if "oauth_token:" in line:
+                    token = line.split(":")[-1].strip()
+                    result["token_prefix"] = token[:8] + "..." if len(token) > 8 else None
+        except Exception as e:
+            result["read_error"] = str(e)
+    else:
+        result["hosts_yml_exists"] = False
+    
+    return result
 
 
 def log_debug(info: dict[str, Any]) -> None:
@@ -160,25 +177,45 @@ def submit_pr(
         cmd.extend(["--label", label])
 
     env = os.environ.copy()
+    
+    # Log what we're about to do
+    cleared_vars = []
+    if "GH_TOKEN" in env:
+        cleared_vars.append("GH_TOKEN")
+        env.pop("GH_TOKEN")
+    if "GITHUB_TOKEN" in env:
+        cleared_vars.append("GITHUB_TOKEN")
+        env.pop("GITHUB_TOKEN")
+    
     if gh_config_dir:
         env["GH_CONFIG_DIR"] = gh_config_dir
     else:
         env.pop("GH_CONFIG_DIR", None)
 
-    # Clear other gh env vars that might interfere
-    env.pop("GH_TOKEN", None)
-    env.pop("GITHUB_TOKEN", None)
-
+    # Get auth info BEFORE running gh command
+    auth_info = get_gh_auth_user(gh_config_dir)
+    
     debug_info = {
         "gh_config_dir": gh_config_dir,
         "gh_config_dir_exists": os.path.isdir(gh_config_dir) if gh_config_dir else None,
-        "hosts_yml_exists": os.path.isfile(os.path.join(gh_config_dir, "hosts.yml")) if gh_config_dir else None,
-        "auth_status": get_gh_auth_info(gh_config_dir, env) if debug else None,
+        "cleared_env_vars": cleared_vars,
+        "auth_config": auth_info,
+        "env_gh_config_dir": env.get("GH_CONFIG_DIR"),
     }
+    
+    # Always log for troubleshooting
+    log_debug({"action": "submit_pr_start", "debug": debug_info, "repo": repo, "head": head})
 
     proc = subprocess.run(cmd, capture_output=True, text=True, env=env)
+    
+    debug_info["gh_returncode"] = proc.returncode
+    debug_info["gh_stderr"] = proc.stderr[:500] if proc.stderr else None
+    
     if proc.returncode != 0:
+        log_debug({"action": "submit_pr_failed", "debug": debug_info, "error": proc.stderr})
         return False, (proc.stderr or proc.stdout or "gh pr create failed").strip(), debug_info
+    
+    log_debug({"action": "submit_pr_success", "debug": debug_info, "result": proc.stdout[:500]})
     return True, (proc.stdout or "submitted").strip(), debug_info
 
 
