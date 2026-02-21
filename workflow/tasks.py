@@ -40,7 +40,7 @@ def review_open_prs(client:PRQueueClient):
             prompt = review_agent.get_reviewer_prompt(reviewer_id=agent_id, repo=repo, pr_number=pr_number, branch=branch)
             logger.debug("prompt: %s", prompt)
             spawn_agent(f"{repo}#{pr_number}", prompt=prompt, agent_id=agent_id)
-            logger.info("Spawned REVIEW for PR #%s by agent %s", pr_number, agent_id)
+            logger.info(f"Spawned REVIEW for PR #{pr_number} in {repo} by agent {agent_id}")
     return len(review_response["prs"])
 
 def fix_open_prs(client:PRQueueClient):
@@ -52,7 +52,7 @@ def fix_open_prs(client:PRQueueClient):
         description = pr["title"]
         # todo have manager pick the dev
         agent_id = _suggest_agent(title=description, labels=[], default_agent=DEFAULT_DEV_AGENT)
-        logger.info("Init fix for PR #%s by agent %s", pr_number, agent_id)
+        logger.info(f"Init fix for PR #{pr_number} in {repo} by agent {agent_id}")
         branch = pr['headRefName']
         prompt = dev_agent.get_pr_fix_prompt(repo=repo, pr_number=pr_number, branch=branch)
         logger.debug("prompt: %s", prompt)
@@ -63,11 +63,11 @@ def fix_pr_merge_conflicts(client:PRQueueClient):
     conflicts_response = client.query(action="needs_conflict_resolution", limit=10)
     logger.info("Found %s PRs needing conflict resolution", conflicts_response['counts']['returned'])
     for pr in conflicts_response["prs"]:
-        logger.info("Init merge conflict fix for PR #%s", pr['prNumber'])
         pr_number = pr["prNumber"]
         repo = pr["repo"]
         description = pr["title"]
         agent_id = _suggest_agent(title=description, labels=[], default_agent=DEFAULT_DEV_AGENT)
+        logger.info(f"Init merge conflict fix for PR #{pr_number} in {repo} by agent {agent_id}")
         branch = pr['headRefName']
         prompt = dev_agent.get_pr_conflicts_prompt(repo=repo, pr_number=pr_number, branch=branch)
         logger.debug("prompt: %s", prompt)
@@ -83,7 +83,7 @@ def fix_status_checks(client:PRQueueClient):
         repo = pr["repo"]
         description = pr["title"]
         agent_id = _suggest_agent(title=description, labels=[], default_agent=DEFAULT_DEV_AGENT)
-        logger.info("Init status fix for PR #%s by agent %s", pr_number, agent_id)
+        logger.info(f"Init status fix for PR #{pr_number} in {repo} by agent {agent_id}")
         branch = pr['headRefName']
         prompt = dev_agent.get_pr_fix_status_checks_prompt(repo=repo, pr_number=pr_number, branch=branch)
         logger.debug("prompt: %s", prompt)
@@ -97,7 +97,7 @@ def merge_prs(client:PRQueueClient):
     for pr in merges_response["prs"]:
         repo = pr["repo"]
         pr_number = pr["prNumber"]
-        logger.info("Init merge for PR #%s", pr_number)
+        logger.info(f"Init merge for PR #{pr_number} in {repo}")
         result = merge_pr(repo, pr_number)
         if result["success"]:
             logger.info("Merged PR #%s in %s", pr_number, repo)
