@@ -1,11 +1,13 @@
 # jm-code
 
-Bot that syncs with GitHub and spawns agents to write code, review pull request, and fix issues in a loop.
+Bot that syncs with GitHub and spawns agents to write code, review pull requests, and fix issues in a loop.
 
 
 ```
-Issue → Dev Agent → PR → Review Agents → Fix/Re-review loop → Merge
+Issue → Write code → Pull request → Review → Fix/Re-review loop → Merge
 ```
+
+Detects and fixes automated CI/CD issues as well (configured inside destination repo)
 
 ## Projects Built By Agents Using `jm-code`
 
