@@ -50,7 +50,7 @@ def fix_open_prs(client:PRQueueClient):
         description = pr["title"]
         # todo have manager pick the dev
         agent_id = _suggest_agent(title=description, labels=[], default_agent=DEFAULT_DEV_AGENT)
-        logger.info(f"Init fix for PR #{pr_number} by agent {agent_id}", pr_number)
+        logger.info("Init fix for PR #%s by agent %s", pr_number, agent_id)
         branch = pr['headRefName']
         prompt = dev_agent.get_pr_fix_prompt(repo=repo, pr_number=pr_number, branch=branch)
         logger.debug("prompt: %s", prompt)
