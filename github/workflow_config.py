@@ -73,6 +73,22 @@ def load_approval_rules_for_repo(repo: str) -> Optional[Dict]:
     return None
 
 
+def load_repos() -> List[str]:
+    """Load enabled repo names from config/repos.json.
+
+    Returns list of repo strings like ["owner/repo-a", "owner/repo-b"].
+    Falls back to get_config()["repos"] if repos.json doesn't exist.
+    """
+    root = _workspace_root()
+    path = os.path.join(root, "config", "repos.json")
+    if os.path.isfile(path):
+        with open(path) as f:
+            cfg = json.load(f)
+        repos = cfg.get("repos", {})
+        return [name for name, opts in repos.items() if opts.get("enabled", True)]
+    return list(get_config().get("repos", []))
+
+
 def _find_config_path():
     """Walk up from this file to find workflow_config.json."""
     d = os.path.dirname(os.path.abspath(__file__))

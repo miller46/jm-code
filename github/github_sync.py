@@ -27,7 +27,7 @@ from enum import Enum
 
 import logging
 
-from github.workflow_config import get_config, load_reviewers_for_repo, load_approval_rules_for_repo
+from github.workflow_config import get_config, load_reviewers_for_repo, load_approval_rules_for_repo, load_repos
 from github.workflow_config import MAX_ITERATIONS  # backward-compat re-export  # noqa: F401
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ def _has_failing_checks(pr_detail: dict) -> bool:
 # Keep module-level names so existing tests using `patch("github_sync.DB_PATH", ...)` still work.
 # These are only used as defaults; functions below read from get_config() at call time.
 DB_PATH = get_config()["db_path"]
-REPOS = get_config()["repos"]
+REPOS = load_repos()
 
 
 # ============================================================================
@@ -944,46 +944,22 @@ def sync_repo(repo: str) -> int:
     return count
 
 
-SYNC_LOCK_NAME = "github_sync_main"
-SYNC_LOCK_TTL = 600  # seconds
-
-
 def sync():
     """Main sync entry point."""
-    import uuid
-    lock_owner = f"sync-{uuid.uuid4().hex[:8]}"
-
     init_db()
-
-    # Clean up stale locks at startup
-    stale = cleanup_expired_locks()
-    if stale:
-        logger.info("Cleaned %s expired lock(s)", stale)
-
-    # Acquire cron overlap lock
-    if not acquire_lock(SYNC_LOCK_NAME, lock_owner, SYNC_LOCK_TTL):
-        logger.warning("Sync already running, exiting.")
-        return
 
     started_at = datetime.now(timezone.utc).isoformat()
     total_synced = 0
     errors = []
 
-    try:
-        for repo in REPOS:
-            try:
-                count = sync_repo(repo)
-                total_synced += count
-                logger.info("Synced %s items from %s", count, repo)
-            except Exception as e:
-                errors.append(f"{repo}: {str(e)}")
-                logger.exception("Error syncing %s", repo)
-
-    except Exception as e:
-        errors.append(str(e))
-
-    finally:
-        release_lock(SYNC_LOCK_NAME, lock_owner)
+    for repo in REPOS:
+        try:
+            count = sync_repo(repo)
+            total_synced += count
+            logger.info("Synced %s items from %s", count, repo)
+        except Exception as e:
+            errors.append(f"{repo}: {str(e)}")
+            logger.exception("Error syncing %s", repo)
 
     finished_at = datetime.now(timezone.utc).isoformat()
 

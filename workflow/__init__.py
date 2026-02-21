@@ -30,6 +30,6 @@ def get_reviewer_data(repo: str) -> list[dict]:
         data = json.loads(override.read_text())
         return data
 
-    default = CONFIG_DIR / "default_reviewers.json"
+    default = CONFIG_DIR / "reviewers.json"
     data = json.loads(default.read_text())
     return data
