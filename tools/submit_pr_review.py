@@ -17,6 +17,35 @@ DEFAULT_REVIEWERS_PATH = WORKSPACE_MANAGER_ROOT / "reviewers.json"
 ALLOWED_VERDICTS = {"approve", "request_changes"}
 
 
+def clean_body(body: str) -> str:
+    """Clean up review body to ensure proper markdown formatting."""
+    if not body:
+        return body
+    
+    import re
+    
+    # Replace literal \n with actual newlines
+    body = body.replace("\\n", "\n")
+    
+    # Ensure headers have blank lines before them
+    body = re.sub(r'([^\n])(\n#{1,6} )', r'\1\n\2', body)
+    
+    # Ensure bullet points are properly formatted (dash-space)
+    body = re.sub(r'^\s*[-*]\s*', '- ', body, flags=re.MULTILINE)
+    
+    # Remove excessive blank lines (more than 2 consecutive)
+    body = re.sub(r'\n{4,}', '\n\n\n', body)
+    
+    # Ensure "Closes/Fixes/Resolves #N" is on its own line with proper spacing
+    body = re.sub(r'([^\n])(Closes|Fixes|Resolves)\s+#(\d+)', 
+                  r'\1\n\n\2 #\3', body, flags=re.IGNORECASE)
+    
+    # Strip trailing whitespace from each line
+    body = '\n'.join(line.rstrip() for line in body.split('\n'))
+    
+    return body.strip()
+
+
 def error(code: str, message: str, retryable: bool = False) -> dict[str, Any]:
     return {"error": {"code": code, "message": message, "retryable": retryable}}
 
@@ -225,6 +254,10 @@ def main(argv: list[str] | None = None) -> int:
     reviewer_id = payload.get("reviewerId")
     verdict = payload.get("verdict")
     body = payload.get("body")
+    
+    # Clean up body to ensure proper markdown formatting
+    if isinstance(body, str):
+        body = clean_body(body)
 
     if not isinstance(repo, str) or not parse_repo(repo):
         print(json.dumps(error("INVALID_INPUT", "repo must be in owner/repo format")))

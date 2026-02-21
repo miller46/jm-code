@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "github"))
 
 from github_sync import (
     Action,
@@ -498,6 +498,45 @@ class TestReconcileMergedPr:
         assert pr["github_state"] == "merged"
         assert pr["status"] == "merged"
         assert pr["action"] == "none"
+
+
+# ── Scenario 14b: Reconciliation — Issue was open, now closed ────────────────
+
+
+class TestReconcileClosedIssue:
+    """Issue in DB as open with needs_dev, not in open list anymore → closed/none."""
+
+    def test_sync_reconcile_closed_issue(self, tmp_db):
+        # Pre-seed DB with an "open" issue that has action=needs_dev
+        existing_id = make_item_id(REPO, ItemType.ISSUE, 50)
+        existing = _make_existing(
+            existing_id,
+            type=ItemType.ISSUE,
+            number=50,
+            title="Fix login bug",
+            github_state="open",
+            status=Status.OPEN,
+            action=Action.NEEDS_DEV,
+            head_sha=None,
+            last_head_sha_seen=None,
+        )
+        with patch("github_sync.DB_PATH", tmp_db):
+            save_item(existing)
+
+        with (
+            patch("github_sync.DB_PATH", tmp_db),
+            patch("github_sync.fetch_issues", return_value=[]),  # Issue not in open list
+            patch("github_sync.fetch_prs", return_value=[]),
+            patch("github_sync.load_reviewers_for_repo", return_value=REQUIRED_REVIEWERS),
+            patch("github_sync.load_approval_rules_for_repo", return_value=None),
+        ):
+            count = sync_repo(REPO)
+
+        items = _read_items(tmp_db)
+        issue = next(i for i in items if i["number"] == 50)
+        assert issue["github_state"] == "closed"
+        assert issue["status"] == "closed"
+        assert issue["action"] == "none"
 
 
 # ── Scenario 15: Full lifecycle — issue → PR → review → fix → approve → merge

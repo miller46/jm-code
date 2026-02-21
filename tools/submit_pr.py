@@ -16,6 +16,35 @@ DEFAULT_AGENTS_PATH = Path(os.environ.get("WORKFLOW_AGENTS_CONFIG", str(PROJECT_
 ALLOWED_EVENTS = {"create", "create_draft"}
 
 
+def clean_body(body: str) -> str:
+    """Clean up PR body to ensure proper markdown formatting."""
+    if not body:
+        return body
+    
+    import re
+    
+    # Replace literal \n with actual newlines
+    body = body.replace("\\n", "\n")
+    
+    # Ensure headers have blank lines before them
+    body = re.sub(r'([^\n])(\n#{1,6} )', r'\1\n\2', body)
+    
+    # Ensure bullet points are properly formatted (dash-space)
+    body = re.sub(r'^\s*[-*]\s*', '- ', body, flags=re.MULTILINE)
+    
+    # Remove excessive blank lines (more than 2 consecutive)
+    body = re.sub(r'\n{4,}', '\n\n\n', body)
+    
+    # Ensure "Closes/Fixes/Resolves #N" is on its own line with proper spacing
+    body = re.sub(r'([^\n])(Closes|Fixes|Resolves)\s+#(\d+)', 
+                  r'\1\n\n\2 #\3', body, flags=re.IGNORECASE)
+    
+    # Strip trailing whitespace from each line
+    body = '\n'.join(line.rstrip() for line in body.split('\n'))
+    
+    return body.strip()
+
+
 def error(code: str, message: str, retryable: bool = False) -> dict[str, Any]:
     return {"error": {"code": code, "message": message, "retryable": retryable}}
 
@@ -245,12 +274,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--debug", action="store_true", help="Include debug info about auth")
     args = parser.parse_args(argv or sys.argv[1:])
 
+    # Clean up body to ensure proper markdown formatting and GitHub keyword detection
+    body = clean_body(args.body) if args.body else ""
+    
     payload = {
         "repo": args.repo,
         "head": args.head,
         "base": args.base,
         "title": args.title,
-        "body": args.body,
+        "body": body,
         "agentId": args.agent_id,
         "draft": args.draft,
         "labels": args.labels or [],

@@ -9,7 +9,9 @@ f"""Implement issue #{issue_number} in {repo}.
 3. Implement the fix/feature
 4. Run tests to verify
 5. Commit and push to origin
-6. Open PR using: python3 {SUBMIT_PR_TOOL_FILE_LOCATION} --agentId {agent_id} --repo {repo} --head <branch> --base main --title "..." --body "Fixes #{issue_number}"
+6. Make a concise title and a clear description in markdown format that includes "Fixes {issue_number}" at the bottom
+7. Double check the description includes "Fixes {issue_number} at the bottom
+8. Open PR using: python3 {SUBMIT_PR_TOOL_FILE_LOCATION} --agentId {agent_id} --repo {repo} --head <branch> --base main --title <title> --body <description>
 
 Return the PR URL when done.
 """

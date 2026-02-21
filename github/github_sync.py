@@ -832,6 +832,27 @@ def sync_repo(repo: str) -> int:
         if linked_pr and action == Action.NONE:
             logger.debug("Issue #%s: linked to PR #%s, skipping dev spawn", issue['number'], linked_pr)
 
+    # Reconcile issues that exist in DB as open but are no longer in the open list
+    open_issue_numbers = {issue['number'] for issue in issues}
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.execute(
+        "SELECT id, number, title FROM workflow_items WHERE type = 'issue' AND repo = ? AND LOWER(github_state) = 'open'",
+        (repo,)
+    )
+    closed_issue_count = 0
+    for row in cursor.fetchall():
+        if row['number'] not in open_issue_numbers:
+            conn.execute(
+                "UPDATE workflow_items SET github_state = ?, status = ?, action = 'none', last_sync = ? WHERE id = ?",
+                ("closed", "closed", now, row['id'])
+            )
+            logger.info("Issue #%s: marked as CLOSED (not in open issue list)", row['number'])
+            closed_issue_count += 1
+    conn.commit()
+    conn.close()
+    count += closed_issue_count
+
     # Sync PRs (using already fetched list)
     for pr in prs:
         item_id = make_item_id(repo, ItemType.PR, pr['number'])
