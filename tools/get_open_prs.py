@@ -62,11 +62,11 @@ class InputSpec:
 class RepoRule:
     enabled: bool
     priority: int
+    default_agent: str
 
 
 @dataclass(slots=True)
 class ToolConfig:
-    default_agent: str
     default_max_iterations: int
     repos: dict[str, RepoRule]
 
@@ -149,7 +149,6 @@ def load_config(config_path: str) -> tuple[ToolConfig | None, dict[str, Any] | N
     except (OSError, json.JSONDecodeError) as exc:
         return None, error("CONFIG_ERROR", f"Invalid config: {exc}", False)
 
-    default_agent = str(payload.get("defaultAgent") or "backend-dev")
     default_max_iterations = payload.get("defaultMaxIterations", DEFAULT_MAX_ITERATIONS)
     if not isinstance(default_max_iterations, int) or default_max_iterations <= 0:
         return None, error("CONFIG_ERROR", "defaultMaxIterations must be positive integer", False)
@@ -165,9 +164,10 @@ def load_config(config_path: str) -> tuple[ToolConfig | None, dict[str, Any] | N
         priority = raw.get("priority", 0)
         if not isinstance(priority, int):
             return None, error("CONFIG_ERROR", f"invalid repo priority for {repo}", False)
-        repos[repo] = RepoRule(enabled=bool(raw.get("enabled", True)), priority=priority)
+        default_agent = str(raw.get("defaultAgent") or "backend-dev")
+        repos[repo] = RepoRule(enabled=bool(raw.get("enabled", True)), priority=priority, default_agent=default_agent)
 
-    return ToolConfig(default_agent=default_agent, default_max_iterations=default_max_iterations, repos=repos), None
+    return ToolConfig(default_max_iterations=default_max_iterations, repos=repos), None
 
 
 def _columns(conn: sqlite3.Connection, table: str) -> set[str]:
@@ -360,9 +360,9 @@ def run(spec: InputSpec, db_path: str, config_path: str) -> dict[str, Any]:
             if spec.exclude_claimed and _is_claimed(row, cols):
                 continue
 
+            repo_rule = cfg.repos.get(repo, RepoRule(enabled=True, priority=0, default_agent="backend-dev"))
             base_priority = int(row[priority_col]) if priority_col and row[priority_col] is not None else 0
-            repo_priority = cfg.repos.get(repo, RepoRule(enabled=True, priority=0)).priority
-            priority = base_priority + repo_priority
+            priority = base_priority + repo_rule.priority
 
             labels = _json_list(row[labels_col]) if labels_col else []
             title = str(row[title_col])
@@ -403,7 +403,7 @@ def run(spec: InputSpec, db_path: str, config_path: str) -> dict[str, Any]:
                 item["reviewers"] = reviewers_cache[repo]
 
             if spec.include_suggested_dev_agent:
-                item["suggestedDevAgent"] = _suggest_agent(title=title, labels=labels, default_agent=cfg.default_agent)
+                item["suggestedDevAgent"] = _suggest_agent(title=title, labels=labels, default_agent=repo_rule.default_agent)
 
             selected.append(item)
 
@@ -597,9 +597,9 @@ class PRQueueClient:
             if spec.exclude_claimed and _is_claimed(row, cols):
                 continue
 
+            repo_rule = cfg.repos.get(repo, RepoRule(enabled=True, priority=0, default_agent="backend-dev"))
             base_priority = int(row[priority_col]) if priority_col and row[priority_col] is not None else 0
-            repo_priority = cfg.repos.get(repo, RepoRule(enabled=True, priority=0)).priority
-            priority = base_priority + repo_priority
+            priority = base_priority + repo_rule.priority
 
             labels = _json_list(row[labels_col]) if labels_col else []
             title = str(row[title_col])
@@ -640,7 +640,7 @@ class PRQueueClient:
                 item["reviewers"] = reviewers_cache[repo]
 
             if spec.include_suggested_dev_agent:
-                item["suggestedDevAgent"] = _suggest_agent(title=title, labels=labels, default_agent=cfg.default_agent)
+                item["suggestedDevAgent"] = _suggest_agent(title=title, labels=labels, default_agent=repo_rule.default_agent)
 
             selected.append(item)
 

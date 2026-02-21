@@ -9,10 +9,9 @@ import tempfile
 
 import pytest
 
-# Ensure the github package is importable
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 
 from get_open_prs import PRQueueClient, VALID_ACTIONS
 
@@ -22,11 +21,10 @@ from get_open_prs import PRQueueClient, VALID_ACTIONS
 # ---------------------------------------------------------------------------
 
 MINIMAL_CONFIG = {
-    "defaultAgent": "backend-dev",
     "defaultMaxIterations": 5,
     "repos": {
-        "acme/app": {"enabled": True, "priority": 10},
-        "acme/lib": {"enabled": True, "priority": 0},
+        "acme/app": {"enabled": True, "priority": 10, "defaultAgent": "backend-dev"},
+        "acme/lib": {"enabled": True, "priority": 0, "defaultAgent": "backend-dev"},
     },
 }
 
@@ -137,7 +135,7 @@ class TestInit:
     def test_init_loads_config(self, db_path, config_path):
         client = PRQueueClient(db_path=db_path, config_path=config_path)
         assert client._config is not None
-        assert client._config.default_agent == "backend-dev"
+        assert client._config.repos["acme/app"].default_agent == "backend-dev"
         client.close()
 
     def test_init_missing_db_raises(self, config_path):

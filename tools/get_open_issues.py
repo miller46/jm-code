@@ -34,11 +34,11 @@ class RepoRule:
     enabled: bool
     priority: int
     max_per_run: int | None
+    default_agent: str
 
 
 @dataclass(slots=True)
 class ToolConfig:
-    default_agent: str
     global_limit: int
     repos: dict[str, RepoRule]
 
@@ -125,7 +125,6 @@ def load_config(config_path: str) -> tuple[ToolConfig | None, dict[str, Any] | N
     except (OSError, json.JSONDecodeError) as exc:
         return None, error("CONFIG_ERROR", f"Invalid config: {exc}", False)
 
-    default_agent = str(payload.get("defaultAgent") or "backend-dev")
     global_limit = payload.get("globalLimit", MAX_LIMIT)
     if not isinstance(global_limit, int) or global_limit <= 0:
         return None, error("CONFIG_ERROR", "globalLimit must be a positive integer", False)
@@ -141,14 +140,15 @@ def load_config(config_path: str) -> tuple[ToolConfig | None, dict[str, Any] | N
         enabled = bool(cfg.get("enabled", True))
         prio = cfg.get("priority", 0)
         max_per_run = cfg.get("max_per_run")
+        default_agent = str(cfg.get("defaultAgent") or "backend-dev")
         if not isinstance(prio, int):
             return None, error("CONFIG_ERROR", f"repo priority must be int: {repo}", False)
         if max_per_run is not None and (not isinstance(max_per_run, int) or max_per_run <= 0):
             return None, error("CONFIG_ERROR", f"repo max_per_run must be positive int: {repo}", False)
 
-        repos[repo] = RepoRule(enabled=enabled, priority=prio, max_per_run=max_per_run)
+        repos[repo] = RepoRule(enabled=enabled, priority=prio, max_per_run=max_per_run, default_agent=default_agent)
 
-    return ToolConfig(default_agent=default_agent, global_limit=min(global_limit, MAX_LIMIT), repos=repos), None
+    return ToolConfig(global_limit=min(global_limit, MAX_LIMIT), repos=repos), None
 
 
 def _columns(conn: sqlite3.Connection, table: str) -> set[str]:
@@ -302,7 +302,7 @@ def _build_issue_item(
         "reason": "needs_dev + no linked PR + not dispatched",
     }
     if spec.include_suggested_agent:
-        item["suggestedAgent"] = _suggest_agent(title=title, labels=labels, default_agent=cfg.default_agent)
+        item["suggestedAgent"] = _suggest_agent(title=title, labels=labels, default_agent=rule.default_agent)
 
     return item
 
@@ -392,7 +392,7 @@ def _execute(
 
         for row in rows:
             repo = str(row[repo_col])
-            rule = cfg.repos.get(repo, RepoRule(enabled=True, priority=0, max_per_run=None))
+            rule = cfg.repos.get(repo, RepoRule(enabled=True, priority=0, max_per_run=None, default_agent="backend-dev"))
 
             if rule.max_per_run is not None and per_repo_counts.get(repo, 0) >= rule.max_per_run:
                 continue
