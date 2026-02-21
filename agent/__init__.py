@@ -39,9 +39,9 @@ def openclaw_tool(
         raise RuntimeError(data)
     return data["result"]
 
-def spawn_agent(label: str, task: str, agent_id: str = "backend-dev", timeout=1800, cleanup="keep") -> dict:
+def spawn_agent(label: str, prompt: str, agent_id: str = "backend-dev", timeout=1800, cleanup="keep") -> dict:
     return openclaw_tool("sessions_spawn", {
-        "task": task,
+        "task": prompt,
         "agentId": agent_id,
         "label": label,
         "runTimeoutSeconds": timeout,

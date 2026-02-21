@@ -25,8 +25,12 @@ from enum import Enum
 # CONFIGURATION
 # ============================================================================
 
+import logging
+
 from github.workflow_config import get_config, load_reviewers_for_repo, load_approval_rules_for_repo
 from github.workflow_config import MAX_ITERATIONS  # backward-compat re-export  # noqa: F401
+
+logger = logging.getLogger(__name__)
 
 
 def _casefold_eq(a, b):
@@ -288,12 +292,12 @@ def evaluate_reviews(
         _casefold_eq(latest_decision.get(r), "CHANGES_REQUESTED") for r in required_reviewers
     )
 
-    # --- Debug output ---
     for reviewer in required_reviewers:
         decision = latest_decision.get(reviewer, "(no review)")
-        print(f"    review: {reviewer} = {decision}")
-    print(
-        f"    all_approved={all_required_approved}  any_changes_requested={any_changes_requested}  review_sha={latest_review_sha}")
+        logger.debug("review: %s = %s", reviewer, decision)
+    logger.debug(
+        "all_approved=%s  any_changes_requested=%s  review_sha=%s",
+        all_required_approved, any_changes_requested, latest_review_sha)
 
     return ReviewEvaluation(
         all_required_approved=all_required_approved,
@@ -361,16 +365,16 @@ def apply_dispatch_dedupe(
     """Return Action.NONE when action for this SHA was already dispatched."""
     sha_short = head_sha[:8] if head_sha else "None"
     if action == Action.NEEDS_REVIEW and head_sha and head_sha == last_review_dispatch_sha:
-        print(f"    dedupe: NEEDS_REVIEW already dispatched for {sha_short} -> suppressed")
+        logger.debug("dedupe: NEEDS_REVIEW already dispatched for %s -> suppressed", sha_short)
         return Action.NONE
     if action == Action.NEEDS_FIX and head_sha and head_sha == last_fix_dispatch_sha:
-        print(f"    dedupe: NEEDS_FIX already dispatched for {sha_short} -> suppressed")
+        logger.debug("dedupe: NEEDS_FIX already dispatched for %s -> suppressed", sha_short)
         return Action.NONE
     if action == Action.READY_TO_MERGE and head_sha and head_sha == last_merge_dispatch_sha:
-        print(f"    dedupe: READY_TO_MERGE already dispatched for {sha_short} -> suppressed")
+        logger.debug("dedupe: READY_TO_MERGE already dispatched for %s -> suppressed", sha_short)
         return Action.NONE
     if action == Action.NEEDS_CONFLICT_RESOLUTION and head_sha and head_sha == last_conflict_dispatch_sha:
-        print(f"    dedupe: NEEDS_CONFLICT_RESOLUTION already dispatched for {sha_short} -> suppressed")
+        logger.debug("dedupe: NEEDS_CONFLICT_RESOLUTION already dispatched for %s -> suppressed", sha_short)
         return Action.NONE
     return action
 
@@ -390,10 +394,10 @@ def update_iteration(
         return iteration, action
 
     if iteration >= max_iterations:
-        print(f"    iteration: {iteration}/{max_iterations} -> MAX_ITERATIONS_REACHED (capped)")
+        logger.debug("iteration: %s/%s -> MAX_ITERATIONS_REACHED (capped)", iteration, max_iterations)
         return iteration, Action.MAX_ITERATIONS_REACHED
 
-    print(f"    iteration: {iteration}/{max_iterations} -> NEEDS_FIX allowed")
+    logger.debug("iteration: %s/%s -> NEEDS_FIX allowed", iteration, max_iterations)
     return iteration, action
 
 
@@ -418,8 +422,9 @@ def determine_pr_action(
     merge_state = pr_detail.get("mergeStateStatus")
 
     pr_num = pr_detail.get("number", "?")
-    print(
-        f"  PR #{pr_num}: gh_state={pr_detail.get('state')}  head={head_sha[:8] if head_sha else 'None'}  mergeable={mergeable}  mergeState={merge_state}")
+    logger.debug(
+        "PR #%s: gh_state=%s  head=%s  mergeable=%s  mergeState=%s",
+        pr_num, pr_detail.get('state'), head_sha[:8] if head_sha else 'None', mergeable, merge_state)
 
     # Evaluate reviews using pure function
     ev = evaluate_reviews(reviews_raw, required_reviewers, approval_rules=approval_rules)
@@ -435,42 +440,43 @@ def determine_pr_action(
         last_reviewed_sha = ev.latest_review_sha or last_reviewed_sha or head_sha
 
     sha_matches = head_sha == last_reviewed_sha if last_reviewed_sha else False
-    print(
-        f"    sha_matches={sha_matches}  head={head_sha[:8] if head_sha else 'None'}  reviewed={last_reviewed_sha[:8] if last_reviewed_sha else 'None'}  conflicts={has_conflicts}")
+    logger.debug(
+        "sha_matches=%s  head=%s  reviewed=%s  conflicts=%s",
+        sha_matches, head_sha[:8] if head_sha else 'None', last_reviewed_sha[:8] if last_reviewed_sha else 'None', has_conflicts)
 
     # Rule 1: merged
     if _casefold_eq(pr_detail.get("state"), "MERGED"):
-        print(f"    -> RULE 1: MERGED  status=merged  action=none")
+        logger.debug("-> RULE 1: MERGED  status=merged  action=none")
         return Status.MERGED, Action.NONE, ev.all_required_approved, ev.any_changes_requested, ev.latest_decision_by_reviewer, last_reviewed_sha
 
     # Rule 2: conflicts + approved
     if has_conflicts:
         if ev.all_required_approved:
-            print(f"    -> RULE 2a: CONFLICTS + APPROVED  status=conflicting  action=needs_conflict_resolution")
+            logger.debug("-> RULE 2a: CONFLICTS + APPROVED  status=conflicting  action=needs_conflict_resolution")
             return Status.CONFLICTING, Action.NEEDS_CONFLICT_RESOLUTION, ev.all_required_approved, ev.any_changes_requested, ev.latest_decision_by_reviewer, last_reviewed_sha
-        print(f"    -> RULE 2b: CONFLICTS (not approved)  status=conflicting  action=none")
+        logger.debug("-> RULE 2b: CONFLICTS (not approved)  status=conflicting  action=none")
         return Status.CONFLICTING, Action.NONE, ev.all_required_approved, ev.any_changes_requested, ev.latest_decision_by_reviewer, last_reviewed_sha
 
     # Rule 3 & 4: all required approved
     if ev.all_required_approved:
         if sha_matches:
-            print(f"    -> RULE 3: ALL APPROVED + SHA MATCH  status=approved  action=ready_to_merge")
+            logger.debug("-> RULE 3: ALL APPROVED + SHA MATCH  status=approved  action=ready_to_merge")
             return Status.APPROVED, Action.READY_TO_MERGE, True, ev.any_changes_requested, ev.latest_decision_by_reviewer, last_reviewed_sha
         else:
-            print(f"    -> RULE 4: ALL APPROVED + SHA MISMATCH  status=pending_review  action=needs_review")
+            logger.debug("-> RULE 4: ALL APPROVED + SHA MISMATCH  status=pending_review  action=needs_review")
             return Status.PENDING_REVIEW, Action.NEEDS_REVIEW, True, ev.any_changes_requested, ev.latest_decision_by_reviewer, last_reviewed_sha
 
     # Rule 5 & 6: any changes requested
     if ev.any_changes_requested:
         if sha_matches:
-            print(f"    -> RULE 5: CHANGES REQUESTED + SHA MATCH  status=changes_requested  action=needs_fix")
+            logger.debug("-> RULE 5: CHANGES REQUESTED + SHA MATCH  status=changes_requested  action=needs_fix")
             return Status.CHANGES_REQUESTED, Action.NEEDS_FIX, False, True, ev.latest_decision_by_reviewer, last_reviewed_sha
         else:
-            print(f"    -> RULE 6: CHANGES REQUESTED + SHA MISMATCH  status=pending_review  action=needs_review")
+            logger.debug("-> RULE 6: CHANGES REQUESTED + SHA MISMATCH  status=pending_review  action=needs_review")
             return Status.PENDING_REVIEW, Action.NEEDS_REVIEW, False, True, ev.latest_decision_by_reviewer, last_reviewed_sha
 
     # Rule 7: default
-    print(f"    -> RULE 7: NO DECISIONS YET  status=pending_review  action=needs_review")
+    logger.debug("-> RULE 7: NO DECISIONS YET  status=pending_review  action=needs_review")
     return Status.PENDING_REVIEW, Action.NEEDS_REVIEW, False, False, ev.latest_decision_by_reviewer, last_reviewed_sha
 
 
@@ -481,18 +487,18 @@ tuple[Status, Action]:
     gh_state = issue.get("state", "?")
 
     if _casefold_eq(gh_state, "closed"):
-        print(f"  Issue #{num}: gh_state={gh_state} -> CLOSED / none")
+        logger.debug("Issue #%s: gh_state=%s -> CLOSED / none", num, gh_state)
         return Status.CLOSED, Action.NONE
 
     if linked_pr_number:
-        print(f"  Issue #{num}: gh_state={gh_state}  linked_pr=#{linked_pr_number} -> PR_CREATED / none")
+        logger.debug("Issue #%s: gh_state=%s  linked_pr=#%s -> PR_CREATED / none", num, gh_state, linked_pr_number)
         return Status.PR_CREATED, Action.NONE
 
     if existing and existing.status == Status.IN_PROGRESS:
-        print(f"  Issue #{num}: gh_state={gh_state}  already in_progress -> IN_PROGRESS / none")
+        logger.debug("Issue #%s: gh_state=%s  already in_progress -> IN_PROGRESS / none", num, gh_state)
         return Status.IN_PROGRESS, Action.NONE
 
-    print(f"  Issue #{num}: gh_state={gh_state} -> OPEN / needs_dev")
+    logger.debug("Issue #%s: gh_state=%s -> OPEN / needs_dev", num, gh_state)
     return Status.OPEN, Action.NEEDS_DEV
 
 
@@ -601,7 +607,7 @@ def migrate_db():
     for col, sql in migrations.items():
         if col not in existing_cols:
             conn.execute(sql)
-            print(f"  Migrated: added column {col}")
+            logger.info("Migrated: added column %s", col)
 
     # Ensure lock index exists (safe to run repeatedly)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_locks_expires_at ON locks(expires_at)")
@@ -779,7 +785,7 @@ def sync_repo(repo: str) -> int:
         count += 1
 
         if linked_pr and action == Action.NONE:
-            print(f"  Issue #{issue['number']}: linked to PR #{linked_pr}, skipping dev spawn")
+            logger.debug("Issue #%s: linked to PR #%s, skipping dev spawn", issue['number'], linked_pr)
 
     # Sync PRs (using already fetched list)
     for pr in prs:
@@ -844,9 +850,9 @@ def sync_repo(repo: str) -> int:
             last_sync=now
         )
 
-        print(
-            f"    FINAL: PR #{pr['number']}  status={status.value}  action={action.value}  iter={iteration}  sha_match={item.sha_matches_review}  conflicts={item.has_conflicts}")
-        print()
+        logger.debug(
+            "FINAL: PR #%s  status=%s  action=%s  iter=%s  sha_match=%s  conflicts=%s",
+            pr['number'], status.value, action.value, iteration, item.sha_matches_review, item.has_conflicts)
 
         save_item(item)
         count += 1
@@ -880,7 +886,7 @@ def sync_repo(repo: str) -> int:
                 "UPDATE workflow_items SET github_state = ?, status = ?, action = 'none', last_sync = ? WHERE id = ?",
                 (gh_state, db_status, now, row['id'])
             )
-            print(f"  PR #{row['number']}: marked as {label} (not in open PR list)")
+            logger.info("PR #%s: marked as %s (not in open PR list)", row['number'], label)
             closed_count += 1
     conn.commit()
     conn.close()
@@ -903,11 +909,11 @@ def sync():
     # Clean up stale locks at startup
     stale = cleanup_expired_locks()
     if stale:
-        print(f"Cleaned {stale} expired lock(s)")
+        logger.info("Cleaned %s expired lock(s)", stale)
 
     # Acquire cron overlap lock
     if not acquire_lock(SYNC_LOCK_NAME, lock_owner, SYNC_LOCK_TTL):
-        print("Sync already running, exiting.")
+        logger.warning("Sync already running, exiting.")
         return
 
     started_at = datetime.now(timezone.utc).isoformat()
@@ -919,12 +925,10 @@ def sync():
             try:
                 count = sync_repo(repo)
                 total_synced += count
-                print(f"Synced {count} items from {repo}")
+                logger.info("Synced %s items from %s", count, repo)
             except Exception as e:
                 errors.append(f"{repo}: {str(e)}")
-                print(f"Error syncing {repo}: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.exception("Error syncing %s", repo)
 
     except Exception as e:
         errors.append(str(e))
@@ -943,9 +947,9 @@ def sync():
     conn.commit()
     conn.close()
 
-    print(f"\nSync complete: {total_synced} items synced")
+    logger.info("Sync complete: %s items synced", total_synced)
     if errors:
-        print(f"Errors: {len(errors)}")
+        logger.error("Errors: %s", len(errors))
 
 
 if __name__ == "__main__":
