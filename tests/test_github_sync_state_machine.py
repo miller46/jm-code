@@ -834,6 +834,59 @@ class TestChecksFailing:
         assert status == Status.CHECKS_FAILING
         assert action == Action.NEEDS_STATUS_FIX
 
+    def test_blocked_with_failed_checks_is_checks_failing(self):
+        """BLOCKED + statusCheckRollup with FAILURE → CHECKS_FAILING (not NEEDS_REVIEW).
+        This is the common case: required checks fail, GitHub reports BLOCKED."""
+        pr_detail = {
+            "state": "OPEN",
+            "headRefOid": "abc123",
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "BLOCKED",
+            "reviews": [],
+            "statusCheckRollup": [
+                {"name": "quality-gates", "status": "COMPLETED", "conclusion": "FAILURE"},
+                {"name": "integration-tests", "status": "COMPLETED", "conclusion": "SKIPPED"},
+            ],
+        }
+        status, action, *_ = determine_pr_action(
+            pr_detail, None, required_reviewers=["code-snob", "architect"]
+        )
+        assert status == Status.CHECKS_FAILING
+        assert action == Action.NEEDS_STATUS_FIX
+
+    def test_blocked_without_failed_checks_falls_through(self):
+        """BLOCKED but no failed checks (just missing reviews) → normal review logic."""
+        pr_detail = {
+            "state": "OPEN",
+            "headRefOid": "abc123",
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "BLOCKED",
+            "reviews": [],
+            "statusCheckRollup": [
+                {"name": "quality-gates", "status": "COMPLETED", "conclusion": "SUCCESS"},
+            ],
+        }
+        status, action, *_ = determine_pr_action(
+            pr_detail, None, required_reviewers=["code-snob", "architect"]
+        )
+        assert status == Status.PENDING_REVIEW
+        assert action == Action.NEEDS_REVIEW
+
+    def test_blocked_no_rollup_falls_through(self):
+        """BLOCKED with no statusCheckRollup data → normal review logic."""
+        pr_detail = {
+            "state": "OPEN",
+            "headRefOid": "abc123",
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "BLOCKED",
+            "reviews": [],
+        }
+        status, action, *_ = determine_pr_action(
+            pr_detail, None, required_reviewers=["code-snob", "architect"]
+        )
+        assert status == Status.PENDING_REVIEW
+        assert action == Action.NEEDS_REVIEW
+
 
 class TestStatusFixDedupe:
     def test_status_fix_deduped(self):

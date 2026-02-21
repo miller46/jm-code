@@ -68,10 +68,11 @@ def find_agent(payload: dict[str, Any], agent_id: str) -> dict[str, Any] | None:
     for entry in payload.get("agents", []):
         if not isinstance(entry, dict):
             continue
-        rid = entry.get("id") or entry.get("name") or entry.get("agent")
-        if isinstance(rid, str) and rid.strip() == agent_id:
-            return entry
-
+        # Check all possible ID fields (id, name, agent)
+        for key in ("id", "name", "agent"):
+            rid = entry.get(key)
+            if isinstance(rid, str) and rid.strip() == agent_id:
+                return entry
     return None
 
 

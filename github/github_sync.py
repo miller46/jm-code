@@ -40,6 +40,17 @@ def _casefold_eq(a, b):
     return a.casefold() == b.casefold()
 
 
+def _has_failing_checks(pr_detail: dict) -> bool:
+    """Return True if statusCheckRollup contains any FAILURE conclusion."""
+    rollup = pr_detail.get("statusCheckRollup")
+    if not rollup or not isinstance(rollup, list):
+        return False
+    return any(
+        _casefold_eq(check.get("conclusion"), "FAILURE")
+        for check in rollup
+    )
+
+
 # Keep module-level names so existing tests using `patch("github_sync.DB_PATH", ...)` still work.
 # These are only used as defaults; functions below read from get_config() at call time.
 DB_PATH = get_config()["db_path"]
@@ -469,8 +480,11 @@ def determine_pr_action(
         return Status.CONFLICTING, Action.NEEDS_CONFLICT_RESOLUTION, ev.all_required_approved, ev.any_changes_requested, ev.latest_decision_by_reviewer, last_reviewed_sha
 
     # Rule 2.5: failing CI checks → needs status fix (takes priority over review state)
-    if _casefold_eq(merge_state, "UNSTABLE"):
-        logger.debug("-> RULE 2.5: CHECKS FAILING  approved=%s  status=checks_failing  action=needs_status_fix", ev.all_required_approved)
+    has_failing_checks = _casefold_eq(merge_state, "UNSTABLE") or (
+        _casefold_eq(merge_state, "BLOCKED") and _has_failing_checks(pr_detail)
+    )
+    if has_failing_checks:
+        logger.debug("-> RULE 2.5: CHECKS FAILING  mergeState=%s  approved=%s  status=checks_failing  action=needs_status_fix", merge_state, ev.all_required_approved)
         return Status.CHECKS_FAILING, Action.NEEDS_STATUS_FIX, ev.all_required_approved, ev.any_changes_requested, ev.latest_decision_by_reviewer, last_reviewed_sha
 
     # Rule 3 & 4: all required approved
