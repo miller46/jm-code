@@ -60,6 +60,7 @@ class Action(Enum):
     NEEDS_CONFLICT_RESOLUTION = "needs_conflict_resolution"  # Merge conflicts
     READY_TO_MERGE = "ready_to_merge"  # Approved, no conflicts, SHA matches
     MAX_ITERATIONS_REACHED = "max_iterations_reached"  # Manual intervention needed
+    DISPATCHED = "dispatched"  # Agent spawned, awaiting result
 
 
 class Status(Enum):
@@ -922,6 +923,8 @@ def sync():
             except Exception as e:
                 errors.append(f"{repo}: {str(e)}")
                 print(f"Error syncing {repo}: {e}")
+                import traceback
+                traceback.print_exc()
 
     except Exception as e:
         errors.append(str(e))

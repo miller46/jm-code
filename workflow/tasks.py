@@ -15,8 +15,8 @@ def dev_open_issues(client:IssueQueueClient):
         agent_id = _suggest_agent(title=description, labels=[], default_agent=DEFAULT_DEV_AGENT)
         task = dev_agent.get_dev_prompt(repo=repo, issue_number=issue_number)
         print(task)
-        spawn_agent(pr, task=task, agent_id=agent_id)
-        print(f"Spawned review for Issue #{issue_number} by agent {agent_id}")
+        spawn_agent(f"{repo}#{issue_number}", task=task, agent_id=agent_id)
+        print(f"Spawned DEV for Issue #{issue_number} by agent {agent_id}")
 
 def review_open_prs(client:PRQueueClient):
     review_response = client.query(action="needs_review", limit=10)
@@ -34,8 +34,8 @@ def review_open_prs(client:PRQueueClient):
             branch = pr['headRefName']
             task = review_agent.get_reviewer_prompt(reviewer_id=agent_id, repo=repo, pr_number=pr_number, branch=branch)
             print(task)
-            spawn_agent(pr, task=task, agent_id=agent_id)
-            print(f"Spawned review for PR #{pr_number} by agent {agent_id}")
+            spawn_agent(f"{repo}#{pr_number}", task=task, agent_id=agent_id)
+            print(f"Spawned REVIEW for PR #{pr_number} by agent {agent_id}")
 
 def fix_open_prs(client:PRQueueClient):
     fixes_response = client.query(action="needs_fix", limit=10)
@@ -50,7 +50,7 @@ def fix_open_prs(client:PRQueueClient):
         branch = pr['headRefName']
         task = review_agent.get_pr_fix_prompt(repo=repo, pr_number=pr_number, branch=branch)
         print(task)
-        spawn_agent(pr, agent_id=agent_id, task=task)
+        spawn_agent(f"{repo}#{pr_number}", agent_id=agent_id, task=task)
 
 def fix_pr_merge_conflicts(client:PRQueueClient):
     conflicts_response = client.query(action="needs_conflict_resolution", limit=10)
@@ -64,7 +64,8 @@ def fix_pr_merge_conflicts(client:PRQueueClient):
         branch = pr['headRefName']
         task = review_agent.get_pr_conflicts_prompt(repo=repo, pr_number=pr_number, branch=branch)
         print(task)
-        spawn_agent(pr, agent_id=agent_id, task=task)
+        spawn_agent(f"{repo}#{pr_number}", agent_id=agent_id, task=task)
+        print(f"Spawned MERGE CONFLICT FIX for PR #{pr['prNumber']} by {agent_id}")
 
 def merge_prs(client:PRQueueClient):
     merges_response = client.query(action="ready_to_merge", limit=10)
