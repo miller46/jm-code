@@ -27,7 +27,7 @@ def review_open_prs(client:PRQueueClient):
     logger.info("Found %s PRs needing review", review_response['counts']['returned'])
     for pr in review_response["prs"]:
         pr_number = pr["prNumber"]
-        logger.info("Init review for PR #%s", pr_number)
+        logger.info(f"Init review for PR #{pr_number}")
         repo = pr["repo"]
         reviewers = get_reviewers(repo)
         for reviewer in reviewers:
@@ -46,11 +46,11 @@ def fix_open_prs(client:PRQueueClient):
     logger.info("Found %s PRs needing fixes", fixes_response['counts']['returned'])
     for pr in fixes_response["prs"]:
         pr_number = pr["prNumber"]
-        logger.info("Init fix for PR #%s", pr_number)
         repo = pr["repo"]
         description = pr["title"]
         # todo have manager pick the dev
         agent_id = _suggest_agent(title=description, labels=[], default_agent=DEFAULT_DEV_AGENT)
+        logger.info(f"Init fix for PR #{pr_number} by agent {agent_id}", pr_number)
         branch = pr['headRefName']
         prompt = dev_agent.get_pr_fix_prompt(repo=repo, pr_number=pr_number, branch=branch)
         logger.debug("prompt: %s", prompt)

@@ -265,6 +265,21 @@ class TestDeterminePrAction:
         assert status == Status.CONFLICTING
         assert action == Action.NEEDS_CONFLICT_RESOLUTION
 
+    def test_conflicts_without_approval_needs_resolution(self):
+        """PR #77 regression: conflicts with no reviews should still need resolution."""
+        pr_detail = {
+            "state": "OPEN",
+            "headRefOid": "6f6f5f7aa565855ee475813248861fb03639a4c6",
+            "mergeable": "CONFLICTING",
+            "mergeStateStatus": "DIRTY",
+            "reviews": [],
+        }
+        status, action, *_ = determine_pr_action(
+            pr_detail, None, required_reviewers=["code-snob", "architect"]
+        )
+        assert status == Status.CONFLICTING
+        assert action == Action.NEEDS_CONFLICT_RESOLUTION
+
 
 # ── 6. test_dedupe_prevents_double_review_fix_merge ────────────────────────────
 

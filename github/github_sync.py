@@ -449,13 +449,10 @@ def determine_pr_action(
         logger.debug("-> RULE 1: MERGED  status=merged  action=none")
         return Status.MERGED, Action.NONE, ev.all_required_approved, ev.any_changes_requested, ev.latest_decision_by_reviewer, last_reviewed_sha
 
-    # Rule 2: conflicts + approved
+    # Rule 2: conflicts → always needs resolution regardless of approval status
     if has_conflicts:
-        if ev.all_required_approved:
-            logger.debug("-> RULE 2a: CONFLICTS + APPROVED  status=conflicting  action=needs_conflict_resolution")
-            return Status.CONFLICTING, Action.NEEDS_CONFLICT_RESOLUTION, ev.all_required_approved, ev.any_changes_requested, ev.latest_decision_by_reviewer, last_reviewed_sha
-        logger.debug("-> RULE 2b: CONFLICTS (not approved)  status=conflicting  action=none")
-        return Status.CONFLICTING, Action.NONE, ev.all_required_approved, ev.any_changes_requested, ev.latest_decision_by_reviewer, last_reviewed_sha
+        logger.debug("-> RULE 2: CONFLICTS  approved=%s  status=conflicting  action=needs_conflict_resolution", ev.all_required_approved)
+        return Status.CONFLICTING, Action.NEEDS_CONFLICT_RESOLUTION, ev.all_required_approved, ev.any_changes_requested, ev.latest_decision_by_reviewer, last_reviewed_sha
 
     # Rule 3 & 4: all required approved
     if ev.all_required_approved:

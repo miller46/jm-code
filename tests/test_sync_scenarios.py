@@ -360,7 +360,7 @@ class TestPrApprovedWithConflicts:
 
 
 class TestPrConflictsNotApproved:
-    """Conflicts but no approvals → CONFLICTING / NONE (nothing to do yet)."""
+    """Conflicts but no approvals → CONFLICTING / NEEDS_CONFLICT_RESOLUTION."""
 
     def test_sync_pr_conflicts_no_approval(self, tmp_db):
         pr_list = load_fixture("scenario_pr_list.json")
@@ -378,7 +378,7 @@ class TestPrConflictsNotApproved:
         items = _read_items(tmp_db)
         pr = items[0]
         assert pr["status"] == "conflicting"
-        assert pr["action"] == "none"
+        assert pr["action"] == "needs_conflict_resolution"
         assert pr["has_conflicts"] == 1
         assert pr["all_reviewers_approved"] == 0
 

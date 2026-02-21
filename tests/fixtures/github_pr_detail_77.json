@@ -1,0 +1,18 @@
+{
+    "author": {
+        "id": "MDQ6VXNlcjQ3MjQxOTY=",
+        "is_bot": false,
+        "login": "miller46",
+        "name": ""
+    },
+    "body": "Fixes #76",
+    "createdAt": "2026-02-21T01:39:03Z",
+    "headRefOid": "6f6f5f7aa565855ee475813248861fb03639a4c6",
+    "mergeStateStatus": "DIRTY",
+    "mergeable": "CONFLICTING",
+    "number": 77,
+    "reviews": [],
+    "state": "OPEN",
+    "title": "Make JM_API_BOTS_WRITE_ADMIN_ONLY secure by default",
+    "updatedAt": "2026-02-21T01:39:03Z"
+}
