@@ -54,7 +54,7 @@ def openclaw_tool(
 def choose_agent(item: QueueItem) -> str:
     return item.suggested_agent or "backend-dev"
 
-def spawn_fix_agent(pr: dict, task:str, agent_id:str=None, timeout=1800, cleanup="keep") -> dict:
+def spawn_agent(pr: dict, task:str, agent_id:str=None, timeout=1800, cleanup="keep") -> dict:
     item = QueueItem(
         item_id=pr["itemId"],
         repo=pr["repo"],
@@ -78,7 +78,7 @@ def run_dispatch_cycle(items: list[QueueItem]):
 
     for item in items:
         try:
-            res = spawn_fix_agent(item)
+            res = spawn_agent(item)
             # only mark dispatched after spawn success
             openclaw_tool("mark_pr_dispatched", {
                 "itemId": item.item_id,
