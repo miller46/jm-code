@@ -1,10 +1,10 @@
 import logging
 
-from github.get_open_prs import PRQueueClient, _suggest_agent
-from github.get_open_issues import IssueQueueClient
+from tools.get_open_prs import PRQueueClient, _suggest_agent
+from tools.get_open_issues import IssueQueueClient
 from github.merge import merge_pr
 from agent import spawn_agent, review_agent, dev_agent
-from workflow import get_reviewers, get_review_policy
+from workflow import get_reviewers
 from config import DEFAULT_DEV_AGENT
 
 logger = logging.getLogger(__name__)

@@ -8,8 +8,8 @@ logging.basicConfig(format='%(asctime)-15s %(levelname)-8s %(name)s %(message)s'
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "jm_bot"))
 
 from jm_bot.base_bot.remote_config_bots.redis_remote_bot import BotWithRedisRemoteConfig
-from github.get_open_prs import PRQueueClient
-from github.get_open_issues import IssueQueueClient
+from tools.get_open_prs import PRQueueClient
+from tools.get_open_issues import IssueQueueClient
 from workflow import tasks
 from github import github_sync
 

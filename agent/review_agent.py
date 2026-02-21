@@ -1,4 +1,4 @@
-from config.openclaw import SUBMIT_PR_REVIEW_TOOL_FILE_LOCATION
+from config.tools import SUBMIT_PR_REVIEW_TOOL_FILE_LOCATION
 
 def get_reviewer_prompt(reviewer_id:str, repo:str, pr_number:str, branch:str) -> str:
     return (
