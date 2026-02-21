@@ -9,6 +9,41 @@ Issue → Write code → Pull request → Review → Fix/Re-review loop → Merg
 
 Detects and fixes automated CI/CD issues as well (configured inside destination repo)
 
+
+```mermaid
+flowchart LR
+    subgraph LIFECYCLE["📋 Code Lifecycle"]
+        ISSUE["📝 Issue"]
+        TRIAGE["🎯 Assign Agent"]
+        WRITE["💻 Write Code & Open PR"]
+        REVIEW["👀 Review"]
+        FIX["🔧 Code Fix"]
+        MERGE["✅ Merge"]
+        ISSUE --> TRIAGE --> WRITE --> REVIEW
+        REVIEW -->|Changes requested| FIX
+        FIX --> REVIEW
+        REVIEW -->|Approved| MERGE
+    end
+    subgraph AGENTS["🤖 Agents"]
+        MANAGER["👔 Manager Agent"]
+        ARCH["🏗️ Architect Agent"]
+        DEV["⚡ Backend Dev Agent"]
+        SEC["🔒 Security Reviewer Agent"]
+    end
+    MANAGER -.->|creates| ISSUE
+    MANAGER -.-> TRIAGE
+    DEV -.->|implements| WRITE
+    ARCH -.->|reviews| REVIEW
+    SEC -.->|reviews| REVIEW
+    DEV -.->|fixes issues| FIX
+    
+    classDef lifecycleNode fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef agentNode fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    
+    class ISSUE,TRIAGE,WRITE,REVIEW,FIX,MERGE lifecycleNode
+    class MANAGER,ARCH,DEV,SEC agentNode
+```
+
 ## Projects Built By Agents Using `jm-code`
 
 * https://github.com/miller46/agent-command-center
