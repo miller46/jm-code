@@ -9,3 +9,5 @@
     - PR can be frozen until more information is gathered
 - Git names (commit info) are enforced in local .gitconfig when agents run on same machine. Standardize / enforce
 - code snob a few times has done reviews on things out of scope. need local git cleanup occasionally
+- sometimes see git checkout occur inside jm-code instead of in workspace. need systematic directory setting
+- sometimes workspaces get messy. need systematic git cleanup
