@@ -6,18 +6,6 @@
       "priority": 0,
       "max_per_run": 50,
       "defaultAgent": "backend-dev"
-    },
-    "miller46/agent-command-center": {
-      "enabled": true,
-      "priority": 0,
-      "max_per_run": 50,
-      "defaultAgent": "frontend-dev"
-    },
-    "miller46/agent-whiteboard": {
-      "enabled": true,
-      "priority": 0,
-      "max_per_run": 50,
-      "defaultAgent": "backend-dev"
     }
   }
 }
