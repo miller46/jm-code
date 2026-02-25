@@ -1,5 +1,10 @@
-## Backlog
+## TODO
+- more custom tools
+  - enforce git init, git cleanup, dispatch, git identity, and github token (and structure in PR description)
+- move to other machine where manager can be default
 
+## Backlog
+- move to event based instead of run every X (or just make it loop faster lol)
 - PR reviewer (code-snob especially) can be wrong sometimes.
   - possible solutions
     - if reviewers disagree, the reviewers can hash it out
