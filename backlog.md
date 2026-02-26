@@ -1,11 +1,18 @@
 ## TODO
 - more custom tools
   - enforce git init, git cleanup, dispatch, git identity, and github token (and structure in PR description)
-- move to other machine where manager can be default
 - merging happens from last reviewer, merge github token should be explicitly defined
 - manager should pick the agent whose decision should be cached
 - right now this kinda assumes one dev per PR. Devs should git pull at certain points (or setup_workspace should)
-
+- trim test bloat
+- move to other machine where manager can be default
+- update readme
+  - mention "gotchas" like picking dev comes from "main" agent right now
+  - mention configs/settings for OpenClaw and git
+    - requires allow tools sessions_spawn, sessions_send
+    - requires local git .gitconfig for github identities
+    - requires github tokens in ~/.openclaw/agents/{agent_name}/hosts.yml
+    - 
 ## Backlog
 - merge conflict fix sometimes picks a different dev from main dev. which might even be optimal sometimes
 - move to event based instead of run every X (or just make it loop faster lol)
