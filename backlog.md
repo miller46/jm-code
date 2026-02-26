@@ -1,8 +1,8 @@
 ## TODO
 - more custom tools
   x - enforce git init, git cleanup, dispatch, git identity, and github token (and structure in PR description)
-  - add dispatch to custom tools
-  - actually add custom tool call to dev workflows
+  x - add dispatch to custom tools
+  x - actually add custom tool call to dev workflows
 x - right now this kinda assumes one dev per PR. Devs should git pull at certain points (or setup_workspace should)
 - move to other machine where manager can be default
 - update readme
@@ -11,8 +11,8 @@ x - right now this kinda assumes one dev per PR. Devs should git pull at certain
     - requires allow tools sessions_spawn, sessions_send
     - requires local git .gitconfig for github identities
     - requires github tokens in ~/.openclaw/agents/{agent_name}/hosts.yml
-- get_pr_fix_status_checks_prompt doesnt use task files?
-
+x - get_pr_fix_status_checks_prompt doesnt use task files?
+- test above
 ## Backlog
 - currently dev agent is picked by "main" agent - would need inter-agent messaging to call a different agent
 - it's possible multiple devs are ideal for a given issue. currently only supported by breaking up the tickets separately
