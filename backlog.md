@@ -4,7 +4,7 @@
 - move to other machine where manager can be default
 - merging happens from last reviewer, merge github token should be explicitly defined
 - manager should pick the agent whose decision should be cached
-
+- right now this kinda assumes one dev per PR. Devs should git pull at certain points (or setup_workspace should)
 
 ## Backlog
 - merge conflict fix sometimes picks a different dev from main dev. which might even be optimal sometimes
