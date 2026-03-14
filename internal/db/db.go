@@ -8,25 +8,21 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// Store wraps a SQLite database connection.
 type Store struct {
 	db *sql.DB
 }
 
-// DB returns the underlying *sql.DB for direct queries.
 func (s *Store) DB() *sql.DB { return s.db }
 
-// Close closes the database connection.
 func (s *Store) Close() error { return s.db.Close() }
 
-// Open creates or opens a SQLite database and runs migrations.
 func Open(dsn string) (*Store, error) {
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("opening database: %w", err)
 	}
 
-	// Enable WAL mode for better concurrent reads.
+	// WAL mode for better concurrent reads
 	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("setting WAL mode: %w", err)
@@ -123,7 +119,6 @@ func (s *Store) migrate() error {
 	return err
 }
 
-// UpsertWorkflowItem inserts or replaces a workflow item.
 func (s *Store) UpsertWorkflowItem(item WorkflowItem) error {
 	_, err := s.db.Exec(`
 		INSERT OR REPLACE INTO workflow_items (
@@ -166,7 +161,6 @@ func (s *Store) UpsertWorkflowItem(item WorkflowItem) error {
 	return err
 }
 
-// GetWorkflowItem retrieves a single workflow item by ID.
 func (s *Store) GetWorkflowItem(id string) (*WorkflowItem, error) {
 	row := s.db.QueryRow(`SELECT
 		id, type, repo, number, title, github_state, repo_scoped_id,
@@ -202,7 +196,6 @@ func (s *Store) GetWorkflowItem(id string) (*WorkflowItem, error) {
 	return &item, nil
 }
 
-// QueryWorkflowItems returns items matching the given type, action, and optional repo.
 func (s *Store) QueryWorkflowItems(itemType, action, repo string, limit int) ([]WorkflowItem, error) {
 	query := `SELECT
 		id, type, repo, number, title, github_state, repo_scoped_id,
@@ -255,7 +248,6 @@ func (s *Store) QueryWorkflowItems(itemType, action, repo string, limit int) ([]
 	return items, rows.Err()
 }
 
-// UpdateItemStatus sets the status and action for a workflow item.
 func (s *Store) UpdateItemStatus(itemID, status, action string) error {
 	_, err := s.db.Exec(
 		"UPDATE workflow_items SET status = ?, action = ?, updated_at = ? WHERE id = ?",
@@ -264,8 +256,7 @@ func (s *Store) UpdateItemStatus(itemID, status, action string) error {
 	return err
 }
 
-// MarkDispatched updates the dispatch SHA for the given dispatch type.
-// For "fix", it also increments the iteration counter.
+// For "fix" dispatch type, also increments the iteration counter.
 func (s *Store) MarkDispatched(itemID, dispatchType, headSHA string) error {
 	var col string
 	switch dispatchType {
@@ -296,9 +287,7 @@ func (s *Store) MarkDispatched(itemID, dispatchType, headSHA string) error {
 	return err
 }
 
-// MarkReviewerDispatched merges the reviewer's dispatch SHA into the reviewer_dispatch_shas_json field.
 func (s *Store) MarkReviewerDispatched(itemID, reviewer, headSHA string) error {
-	// Read current value
 	var current string
 	err := s.db.QueryRow(
 		"SELECT reviewer_dispatch_shas_json FROM workflow_items WHERE id = ?", itemID,
@@ -321,10 +310,8 @@ func (s *Store) MarkReviewerDispatched(itemID, reviewer, headSHA string) error {
 	return err
 }
 
-// AcquireLock tries to acquire a named lock. Returns true if successful.
 func (s *Store) AcquireLock(name, owner string, durationSeconds int) (bool, error) {
-	// Try to insert; fail silently if lock exists and hasn't expired.
-	expiresAt := fmt.Sprintf("%d", durationSeconds) // simplified; real impl would use time
+	expiresAt := fmt.Sprintf("%d", durationSeconds)
 
 	result, err := s.db.Exec(
 		"INSERT OR IGNORE INTO locks (name, owner, expires_at) VALUES (?, ?, ?)",
@@ -338,13 +325,11 @@ func (s *Store) AcquireLock(name, owner string, durationSeconds int) (bool, erro
 	return rows > 0, nil
 }
 
-// ReleaseLock releases a named lock.
 func (s *Store) ReleaseLock(name string) error {
 	_, err := s.db.Exec("DELETE FROM locks WHERE name = ?", name)
 	return err
 }
 
-// InsertSyncLog records a sync run.
 func (s *Store) InsertSyncLog(startedAt, finishedAt string, itemsSynced int, errors string) (int64, error) {
 	result, err := s.db.Exec(
 		"INSERT INTO sync_log (started_at, finished_at, items_synced, errors) VALUES (?, ?, ?, ?)",
@@ -356,7 +341,6 @@ func (s *Store) InsertSyncLog(startedAt, finishedAt string, itemsSynced int, err
 	return result.LastInsertId()
 }
 
-// InsertDispatchEvent records an agent dispatch.
 func (s *Store) InsertDispatchEvent(event DispatchEvent) error {
 	_, err := s.db.Exec(
 		"INSERT INTO dispatch_events (item_id, step_id, head_sha, agent, status, dispatched_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -365,7 +349,6 @@ func (s *Store) InsertDispatchEvent(event DispatchEvent) error {
 	return err
 }
 
-// CacheAgentSelection caches which agent was selected for an issue.
 func (s *Store) CacheAgentSelection(repo string, number int, agentID string) error {
 	_, err := s.db.Exec(
 		"INSERT OR REPLACE INTO agent_selections (repo, number, agent_id, created_at) VALUES (?, ?, ?, ?)",
@@ -374,7 +357,6 @@ func (s *Store) CacheAgentSelection(repo string, number int, agentID string) err
 	return err
 }
 
-// GetCachedAgentSelection returns the cached agent for an issue, or "" if not cached.
 func (s *Store) GetCachedAgentSelection(repo string, number int) (string, error) {
 	var agentID string
 	err := s.db.QueryRow(

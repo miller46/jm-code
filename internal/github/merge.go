@@ -6,7 +6,6 @@ import (
 	"os/exec"
 )
 
-// MergeResult represents the outcome of a PR merge attempt.
 type MergeResult struct {
 	Success  bool   `json:"success"`
 	Repo     string `json:"repo"`
@@ -14,7 +13,6 @@ type MergeResult struct {
 	Error    string `json:"error,omitempty"`
 }
 
-// MergePR merges a PR using the gh CLI.
 // Strategy can be "merge", "squash", or "rebase".
 func MergePR(ctx context.Context, repo string, prNumber int, strategy string) MergeResult {
 	if strategy == "" {

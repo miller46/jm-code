@@ -14,7 +14,6 @@ import (
 	"github.com/jack/go-cli/internal/db"
 )
 
-// ApprovalRules mirrors config.ApprovalRules for use in review evaluation.
 type ApprovalRules struct {
 	Mode              string   `json:"mode"`
 	MinApprovals      int      `json:"min_approvals"`
@@ -22,7 +21,6 @@ type ApprovalRules struct {
 	VetoPowers        []string `json:"veto_powers"`
 }
 
-// DispatchState holds the last-dispatched SHAs for dedup checking.
 type DispatchState struct {
 	LastReviewDispatchSHA    string
 	LastFixDispatchSHA       string
@@ -31,17 +29,15 @@ type DispatchState struct {
 	LastStatusFixDispatchSHA string
 }
 
-// EvaluateReviews processes a list of reviews to determine approval status.
-// Reviews are sorted by submittedAt ascending; the latest review per reviewer wins.
+// Sorted by submittedAt ascending; latest review per reviewer wins.
+// COMMENTED and DISMISSED reviews are ignored.
 func EvaluateReviews(reviews []Review, requiredReviewers []string, rules *ApprovalRules) ReviewEvaluation {
-	// Sort by submittedAt ascending
 	sorted := make([]Review, len(reviews))
 	copy(sorted, reviews)
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].SubmittedAt < sorted[j].SubmittedAt
 	})
 
-	// Latest decision per reviewer (ignoring COMMENTED and DISMISSED)
 	latestDecision := make(map[string]ReviewState)
 	reviewSHA := make(map[string]string)
 	for _, r := range sorted {
@@ -52,7 +48,6 @@ func EvaluateReviews(reviews []Review, requiredReviewers []string, rules *Approv
 		reviewSHA[r.Author] = r.CommitOID
 	}
 
-	// Count approvals
 	approvalCount := 0
 	anyChanges := false
 	for _, state := range latestDecision {
@@ -64,7 +59,6 @@ func EvaluateReviews(reviews []Review, requiredReviewers []string, rules *Approv
 		}
 	}
 
-	// Check veto powers
 	if rules != nil {
 		for _, vetoer := range rules.VetoPowers {
 			if latestDecision[vetoer] == ReviewChangesRequested {
@@ -73,7 +67,6 @@ func EvaluateReviews(reviews []Review, requiredReviewers []string, rules *Approv
 		}
 	}
 
-	// Check required reviewers
 	allRequired := true
 	if len(requiredReviewers) > 0 {
 		for _, req := range requiredReviewers {
@@ -84,14 +77,12 @@ func EvaluateReviews(reviews []Review, requiredReviewers []string, rules *Approv
 		}
 	}
 
-	// Check min approvals
 	minApprovals := 1
 	if rules != nil && rules.MinApprovals > 0 {
 		minApprovals = rules.MinApprovals
 	}
 	meetsMinApprovals := approvalCount >= minApprovals
 
-	// Find the latest review SHA overall
 	var latestSHA string
 	if len(sorted) > 0 {
 		latestSHA = sorted[len(sorted)-1].CommitOID
@@ -106,7 +97,6 @@ func EvaluateReviews(reviews []Review, requiredReviewers []string, rules *Approv
 	}
 }
 
-// HasFailingChecks returns true if any status check has failed.
 func HasFailingChecks(checks []StatusCheck) bool {
 	for _, c := range checks {
 		switch c.TypeName {
@@ -123,58 +113,52 @@ func HasFailingChecks(checks []StatusCheck) bool {
 	return false
 }
 
-// DeterminePRAction computes the status and action for a PR based on its state.
 // Returns (status, action, allApproved, anyChangesRequested, reviewEval).
+// Priority order: MERGED > CONFLICTS > CHECKS FAILING > review state.
 func DeterminePRAction(
 	pr PRDetail,
 	existing *db.WorkflowItem,
 	requiredReviewers []string,
 	rules *ApprovalRules,
 ) (Status, Action, bool, bool, *ReviewEvaluation) {
-	// 1. MERGED
 	if pr.State == "MERGED" {
 		return StatusMerged, ActionNone, false, false, nil
 	}
 
-	// 2. CONFLICTS
 	if pr.Mergeable == "CONFLICTING" {
 		return StatusConflicting, ActionNeedsConflictResolution, false, false, nil
 	}
 
-	// 2.5. CHECKS FAILING
 	if HasFailingChecks(pr.StatusChecks) {
 		return StatusChecksFailing, ActionNeedsStatusFix, false, false, nil
 	}
 
-	// Evaluate reviews
 	eval := EvaluateReviews(pr.Reviews, requiredReviewers, rules)
 	shaMatches := eval.LatestReviewSHA == pr.HeadRefOid
 
-	// 3. ALL APPROVED + SHA MATCHES -> ready to merge
+	// ALL APPROVED + SHA MATCHES -> ready to merge
 	if eval.AllRequiredApproved && shaMatches {
 		return StatusApproved, ActionReadyToMerge, true, false, &eval
 	}
 
-	// 4. ALL APPROVED + SHA MISMATCH -> needs re-review
+	// ALL APPROVED + SHA MISMATCH -> needs re-review
 	if eval.AllRequiredApproved && !shaMatches {
 		return StatusPendingReview, ActionNeedsReview, true, false, &eval
 	}
 
-	// 5. CHANGES REQUESTED + SHA MATCHES -> needs fix
+	// CHANGES REQUESTED + SHA MATCHES -> needs fix
 	if eval.AnyChangesRequested && shaMatches {
 		return StatusChangesRequested, ActionNeedsFix, false, true, &eval
 	}
 
-	// 6. CHANGES REQUESTED + SHA MISMATCH -> needs re-review
+	// CHANGES REQUESTED + SHA MISMATCH -> needs re-review
 	if eval.AnyChangesRequested && !shaMatches {
 		return StatusPendingReview, ActionNeedsReview, false, true, &eval
 	}
 
-	// 7. DEFAULT -> needs review
 	return StatusPendingReview, ActionNeedsReview, false, false, &eval
 }
 
-// DetermineIssueAction computes the status and action for an issue.
 func DetermineIssueAction(issue Issue, existing *db.WorkflowItem, linkedPRNumber int) (Status, Action) {
 	if issue.State == "closed" {
 		return StatusClosed, ActionNone
@@ -188,7 +172,6 @@ func DetermineIssueAction(issue Issue, existing *db.WorkflowItem, linkedPRNumber
 	return StatusOpen, ActionNeedsDev
 }
 
-// ApplyDispatchDedupe returns ActionNone if this action for this SHA was already dispatched.
 func ApplyDispatchDedupe(action Action, headSHA string, state DispatchState) Action {
 	if action == ActionNone {
 		return ActionNone
@@ -216,7 +199,6 @@ func ApplyDispatchDedupe(action Action, headSHA string, state DispatchState) Act
 	return action
 }
 
-// UpdateIteration checks if a fix action has exceeded max iterations.
 func UpdateIteration(action Action, iteration, maxIterations int) (int, Action) {
 	if action == ActionNeedsFix && iteration >= maxIterations {
 		return iteration, ActionMaxIterationsReached
@@ -226,7 +208,6 @@ func UpdateIteration(action Action, iteration, maxIterations int) (int, Action) 
 
 var linkedIssueRe = regexp.MustCompile(`(?i)(?:closes|fixes|resolves)\s+#(\d+)`)
 
-// FindLinkedIssue looks for "closes #N", "fixes #N", or "resolves #N" in the body/title.
 func FindLinkedIssue(body, title string) int {
 	text := body + " " + title
 	m := linkedIssueRe.FindStringSubmatch(text)
@@ -237,7 +218,6 @@ func FindLinkedIssue(body, title string) int {
 	return n
 }
 
-// FindLinkedPRs searches PRs for one that references the given issue number.
 func FindLinkedPRs(prs []PRDetail, issueNumber int) int {
 	pattern := fmt.Sprintf(`(?i)(?:closes|fixes|resolves)\s+#%d\b`, issueNumber)
 	re := regexp.MustCompile(pattern)
@@ -249,18 +229,13 @@ func FindLinkedPRs(prs []PRDetail, issueNumber int) int {
 	return 0
 }
 
-// GHClient wraps gh CLI calls for testability.
 type GHClient interface {
-	// ListIssues returns open issues for a repo.
 	ListIssues(ctx context.Context, repo string) ([]Issue, error)
-	// ListPRsWithDetails returns open PRs with review and status check details.
 	ListPRsWithDetails(ctx context.Context, repo string) ([]PRDetail, error)
 }
 
-// CLIClient implements GHClient by shelling out to the gh CLI.
 type CLIClient struct{}
 
-// ListIssues fetches open issues via `gh issue list`.
 func (c *CLIClient) ListIssues(ctx context.Context, repo string) ([]Issue, error) {
 	cmd := exec.CommandContext(ctx, "gh", "issue", "list",
 		"--repo", repo, "--state", "open", "--json", "number,title,state,labels,body,createdAt,updatedAt",
@@ -271,7 +246,7 @@ func (c *CLIClient) ListIssues(ctx context.Context, repo string) ([]Issue, error
 		return nil, fmt.Errorf("gh issue list: %w", err)
 	}
 
-	// gh outputs labels as objects with "name" field
+	// gh outputs labels as objects with "name" field, not plain strings
 	var raw []struct {
 		Number    int    `json:"number"`
 		Title     string `json:"title"`
@@ -306,7 +281,6 @@ func (c *CLIClient) ListIssues(ctx context.Context, repo string) ([]Issue, error
 	return issues, nil
 }
 
-// prGraphQLQuery is the GraphQL query for fetching PRs with reviews and status checks.
 const prGraphQLQuery = `
 query($owner: String!, $name: String!, $cursor: String) {
   repository(owner: $owner, name: $name) {
@@ -348,7 +322,6 @@ query($owner: String!, $name: String!, $cursor: String) {
 }
 `
 
-// ListPRsWithDetails fetches open PRs with details via gh api graphql.
 func (c *CLIClient) ListPRsWithDetails(ctx context.Context, repo string) ([]PRDetail, error) {
 	parts := strings.SplitN(repo, "/", 2)
 	if len(parts) != 2 {
@@ -486,7 +459,6 @@ func (c *CLIClient) ListPRsWithDetails(ctx context.Context, repo string) ([]PRDe
 	return allPRs, nil
 }
 
-// Syncer synchronizes GitHub issues and PRs into the database.
 type Syncer struct {
 	Store             *db.Store
 	Client            GHClient
@@ -495,7 +467,6 @@ type Syncer struct {
 	MaxIterations     int
 }
 
-// SyncRepo fetches all issues and PRs for a repo and upserts them into the database.
 func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 	slog.Info("syncing repo", "repo", repo)
 
@@ -513,7 +484,6 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 	rules := s.ApprovalRules(repo)
 	count := 0
 
-	// Process issues
 	for _, issue := range issues {
 		linkedPR := FindLinkedPRs(prs, issue.Number)
 		itemID := fmt.Sprintf("%s#issue#%d", repo, issue.Number)
@@ -521,7 +491,6 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 		existing, _ := s.Store.GetWorkflowItem(itemID)
 		status, action := DetermineIssueAction(issue, existing, linkedPR)
 
-		// Apply dispatch dedup
 		if existing != nil {
 			action = ApplyDispatchDedupe(action, "", DispatchState{})
 		}
@@ -548,7 +517,6 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 			LastSync:      db.Now(),
 		}
 
-		// Preserve dispatch state from existing item
 		if existing != nil {
 			item.LastReviewDispatchSHA = existing.LastReviewDispatchSHA
 			item.LastFixDispatchSHA = existing.LastFixDispatchSHA
@@ -566,21 +534,18 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 		count++
 	}
 
-	// Process PRs
 	for _, pr := range prs {
 		itemID := fmt.Sprintf("%s#pr#%d", repo, pr.Number)
 		existing, _ := s.Store.GetWorkflowItem(itemID)
 
 		status, action, allApproved, anyChanges, eval := DeterminePRAction(pr, existing, requiredReviewers, rules)
 
-		// Apply iteration check
 		iteration := 0
 		if existing != nil {
 			iteration = existing.Iteration
 		}
 		iteration, action = UpdateIteration(action, iteration, s.MaxIterations)
 
-		// Apply dispatch dedup
 		if existing != nil {
 			action = ApplyDispatchDedupe(action, pr.HeadRefOid, DispatchState{
 				LastReviewDispatchSHA:    existing.LastReviewDispatchSHA,
@@ -593,7 +558,6 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 
 		linkedIssue := FindLinkedIssue(pr.Body, pr.Title)
 
-		// Build reviewer SHAs JSON
 		reviewerSHAs := "{}"
 		reviewerDispatchSHAs := "{}"
 		if eval != nil {
@@ -605,7 +569,6 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 			reviewerDispatchSHAs = existing.ReviewerDispatchSHAsJSON
 		}
 
-		// Status check rollup JSON
 		checksJSON := "[]"
 		if data, err := json.Marshal(pr.StatusChecks); err == nil {
 			checksJSON = string(data)
@@ -643,7 +606,6 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 			LastSync:                 db.Now(),
 		}
 
-		// Preserve dispatch state
 		if existing != nil {
 			item.LastReviewDispatchSHA = existing.LastReviewDispatchSHA
 			item.LastFixDispatchSHA = existing.LastFixDispatchSHA

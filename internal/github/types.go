@@ -1,7 +1,5 @@
-// Package github provides the state machine for syncing issues/PRs from GitHub.
 package github
 
-// ItemType distinguishes issues from pull requests.
 type ItemType string
 
 const (
@@ -9,17 +7,14 @@ const (
 	ItemTypePR    ItemType = "pr"
 )
 
-// Status represents the current state of a workflow item.
 type Status string
 
 const (
-	// Issue statuses
 	StatusOpen       Status = "open"
 	StatusInProgress Status = "in_progress"
 	StatusPRCreated  Status = "pr_created"
 	StatusClosed     Status = "closed"
 
-	// PR statuses
 	StatusPendingReview    Status = "pending_review"
 	StatusChangesRequested Status = "changes_requested"
 	StatusApproved         Status = "approved"
@@ -28,7 +23,6 @@ const (
 	StatusChecksFailing    Status = "checks_failing"
 )
 
-// Action represents the next action needed for a workflow item.
 type Action string
 
 const (
@@ -44,7 +38,6 @@ const (
 	ActionDispatched             Action = "dispatched"
 )
 
-// ReviewState mirrors GitHub's review states.
 type ReviewState string
 
 const (
@@ -54,7 +47,6 @@ const (
 	ReviewDismissed        ReviewState = "DISMISSED"
 )
 
-// Review represents a single PR review from the GraphQL response.
 type Review struct {
 	Author      string      `json:"author"`
 	State       ReviewState `json:"state"`
@@ -62,7 +54,6 @@ type Review struct {
 	CommitOID   string      `json:"commitOid"`
 }
 
-// ReviewEvaluation is the result of evaluating all reviews on a PR.
 type ReviewEvaluation struct {
 	AllRequiredApproved    bool
 	AnyChangesRequested    bool
@@ -71,14 +62,13 @@ type ReviewEvaluation struct {
 	ReviewSHAByReviewer      map[string]string
 }
 
-// PRDetail represents the fields we need from a PR's GraphQL response.
 type PRDetail struct {
 	Number        int      `json:"number"`
 	Title         string   `json:"title"`
-	State         string   `json:"state"`       // "OPEN", "CLOSED", "MERGED"
+	State         string   `json:"state"`
 	HeadRefOid    string   `json:"headRefOid"`
 	HeadRefName   string   `json:"headRefName"`
-	Mergeable     string   `json:"mergeable"`    // "MERGEABLE", "CONFLICTING", "UNKNOWN"
+	Mergeable     string   `json:"mergeable"`
 	MergeState    string   `json:"mergeStateStatus"`
 	Body          string   `json:"body"`
 	Author        string   `json:"author"`
@@ -88,21 +78,19 @@ type PRDetail struct {
 	StatusChecks  []StatusCheck `json:"statusChecks"`
 }
 
-// StatusCheck represents a CI check from statusCheckRollup.
 type StatusCheck struct {
-	TypeName   string `json:"__typename"` // "CheckRun" or "StatusContext"
-	Name       string `json:"name"`       // for CheckRun
-	Context    string `json:"context"`    // for StatusContext
-	Conclusion string `json:"conclusion"` // for CheckRun: SUCCESS, FAILURE, etc.
-	Status     string `json:"status"`     // for CheckRun: COMPLETED, IN_PROGRESS, etc.
-	State      string `json:"state"`      // for StatusContext: SUCCESS, FAILURE, etc.
+	TypeName   string `json:"__typename"`
+	Name       string `json:"name"`
+	Context    string `json:"context"`
+	Conclusion string `json:"conclusion"`
+	Status     string `json:"status"`
+	State      string `json:"state"`
 }
 
-// Issue represents the fields we need from an issue's JSON output.
 type Issue struct {
 	Number    int      `json:"number"`
 	Title     string   `json:"title"`
-	State     string   `json:"state"` // "open", "closed"
+	State     string   `json:"state"`
 	Labels    []string `json:"labels"`
 	Body      string   `json:"body"`
 	CreatedAt string   `json:"createdAt"`

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -72,6 +73,8 @@ func SpawnAgent(label, prompt, agentID string, timeout int) (*SpawnResult, error
 		},
 	}
 
+	slog.Info("spawning agent", "label", label, "agentId", agentID, "timeout", timeout)
+
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling spawn request: %w", err)
@@ -132,7 +135,12 @@ func SelectDevAgent(
 	cacheSelection func(repo string, number int, agentID string) error,
 ) (string, error) {
 	if cached, err := getCached(repo, issueNumber); err == nil && cached != "" {
-		return cached, nil
+		for _, a := range availableAgents {
+			if a == cached {
+				return cached, nil
+			}
+		}
+		// Cached agent no longer in available list; re-select
 	}
 
 	selected := selectByHeuristic(title, labels, availableAgents)

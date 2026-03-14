@@ -1,4 +1,3 @@
-// Package workflow orchestrates the dispatch of agents for each workflow step.
 package workflow
 
 import (
@@ -14,13 +13,11 @@ import (
 	"github.com/jack/go-cli/internal/tools"
 )
 
-// Dispatcher manages agent dispatch for all workflow steps.
 type Dispatcher struct {
 	Store     *db.Store
 	ConfigDir string
 }
 
-// DevOpenIssues finds open issues needing dev and dispatches agents.
 func (d *Dispatcher) DevOpenIssues(ctx context.Context) (int, error) {
 	client := &tools.IssueQueueClient{Store: d.Store}
 	resp, err := client.Query(50, nil)
@@ -83,7 +80,6 @@ func (d *Dispatcher) DevOpenIssues(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// ReviewOpenPRs finds PRs needing review and dispatches reviewer agents.
 func (d *Dispatcher) ReviewOpenPRs(ctx context.Context) (int, error) {
 	client := &tools.PRQueueClient{Store: d.Store}
 	resp, err := client.Query("needs_review", 20, nil)
@@ -100,11 +96,9 @@ func (d *Dispatcher) ReviewOpenPRs(ctx context.Context) (int, error) {
 		}
 
 		for _, reviewer := range reviewersCfg.EnabledReviewers() {
-			// Skip if already reviewed this SHA
 			if sha, ok := pr.ReviewerSHAs[reviewer.Name]; ok && sha == pr.HeadSHA {
 				continue
 			}
-			// Skip if already dispatched for this SHA
 			if sha, ok := pr.ReviewerDispatchSHAs[reviewer.Name]; ok && sha == pr.HeadSHA {
 				continue
 			}
@@ -133,7 +127,6 @@ func (d *Dispatcher) ReviewOpenPRs(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// FixOpenPRs finds PRs with changes requested and dispatches fix agents.
 func (d *Dispatcher) FixOpenPRs(ctx context.Context) (int, error) {
 	client := &tools.PRQueueClient{Store: d.Store}
 	resp, err := client.Query("needs_fix", 20, nil)
@@ -185,7 +178,6 @@ func (d *Dispatcher) FixOpenPRs(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// FixPRMergeConflicts finds PRs with conflicts and dispatches conflict-resolution agents.
 func (d *Dispatcher) FixPRMergeConflicts(ctx context.Context) (int, error) {
 	client := &tools.PRQueueClient{Store: d.Store}
 	resp, err := client.Query("needs_conflict_resolution", 20, nil)
@@ -228,7 +220,6 @@ func (d *Dispatcher) FixPRMergeConflicts(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// FixStatusChecks finds PRs with failing CI and dispatches fix agents.
 func (d *Dispatcher) FixStatusChecks(ctx context.Context) (int, error) {
 	client := &tools.PRQueueClient{Store: d.Store}
 	resp, err := client.Query("needs_status_fix", 20, nil)
@@ -277,7 +268,6 @@ func (d *Dispatcher) FixStatusChecks(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// MergePRs finds approved PRs and merges them.
 func (d *Dispatcher) MergePRs(ctx context.Context) (int, error) {
 	client := &tools.PRQueueClient{Store: d.Store}
 	resp, err := client.Query("ready_to_merge", 20, nil)
@@ -285,11 +275,9 @@ func (d *Dispatcher) MergePRs(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("querying merge PRs: %w", err)
 	}
 
-	// Load merge strategy from workflow config
 	strategy := "merge"
 	wfCfg, err := config.LoadWorkflow(d.ConfigDir)
 	if err == nil && wfCfg.MergeAgent.Enabled {
-		// Could add strategy to config; default to merge for now
 		_ = wfCfg
 	}
 
@@ -303,7 +291,6 @@ func (d *Dispatcher) MergePRs(ctx context.Context) (int, error) {
 
 		d.Store.MarkDispatched(pr.ItemID, "merge", pr.HeadSHA)
 
-		// Record dispatch event
 		d.Store.InsertDispatchEvent(db.DispatchEvent{
 			ItemID:       pr.ItemID,
 			StepID:       "merge",
@@ -320,7 +307,6 @@ func (d *Dispatcher) MergePRs(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// RunAll executes all workflow dispatch steps in sequence.
 func (d *Dispatcher) RunAll(ctx context.Context) error {
 	steps := []struct {
 		name string
@@ -352,7 +338,6 @@ func (d *Dispatcher) RunAll(ctx context.Context) error {
 	return nil
 }
 
-// reviewerSHAsFromJSON parses reviewer dispatch SHAs from JSON.
 func reviewerSHAsFromJSON(raw string) map[string]string {
 	m := make(map[string]string)
 	json.Unmarshal([]byte(raw), &m)
