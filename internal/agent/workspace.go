@@ -65,16 +65,16 @@ func EnsureBareClone(ctx context.Context, repo, baseDir string) (string, error) 
 		}
 	}
 
-	// Update remote refs
-	cmd := exec.CommandContext(ctx, "git", "-C", barePath, "fetch", "--prune", "origin")
+	// Ensure refspec maps to refs/remotes/origin/* (bare clones default to refs/heads/*)
+	cmd := exec.CommandContext(ctx, "git", "-C", barePath, "config",
+		"remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*")
+	cmd.Run() // best-effort
+
+	// Update remote refs (must happen after refspec fix)
+	cmd = exec.CommandContext(ctx, "git", "-C", barePath, "fetch", "--prune", "origin")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("fetch %s: %s: %w", repo, out, err)
 	}
-
-	// Ensure refspec is correct
-	cmd = exec.CommandContext(ctx, "git", "-C", barePath, "config",
-		"remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*")
-	cmd.Run() // best-effort
 
 	cloneDone[barePath] = true
 	return barePath, nil
