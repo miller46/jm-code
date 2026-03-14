@@ -7,7 +7,6 @@ import (
 	"github.com/jack/go-cli/internal/db"
 )
 
-// IssueResult represents a single issue in the queue response.
 type IssueResult struct {
 	ItemID         string   `json:"itemId"`
 	Repo           string   `json:"repo"`
@@ -21,7 +20,6 @@ type IssueResult struct {
 	SuggestedAgent string   `json:"suggestedAgent"`
 }
 
-// IssueQueueResponse is the response from querying the issue queue.
 type IssueQueueResponse struct {
 	GeneratedAt string        `json:"generatedAt"`
 	Source      string        `json:"source"`
@@ -34,12 +32,10 @@ type IssueQueueResponse struct {
 	NextCursor *int          `json:"nextCursor"`
 }
 
-// IssueQueueClient queries the database for issues needing dev work.
 type IssueQueueClient struct {
 	Store *db.Store
 }
 
-// Query returns issues that need dev work, with pagination support.
 func (c *IssueQueueClient) Query(limit int, repos []string) (*IssueQueueResponse, error) {
 	if limit == 0 {
 		limit = 50

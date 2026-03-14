@@ -2,7 +2,6 @@ package agent
 
 import "fmt"
 
-// GetReviewerPrompt returns the prompt for a reviewer agent reviewing a PR.
 func GetReviewerPrompt(reviewerID, repo string, prNumber int, workspace, taskFile, submitReviewTool string) string {
 	return fmt.Sprintf(`IMMEDIATELY execute: cd %s
 

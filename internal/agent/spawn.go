@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
 )
 
-// GatewayURL returns the OpenClaw gateway URL from env or default.
 func GatewayURL() string {
 	if url := os.Getenv("OPENCLAW_GATEWAY_URL"); url != "" {
 		return url
@@ -17,7 +17,6 @@ func GatewayURL() string {
 	return "http://127.0.0.1:18789"
 }
 
-// GatewayToken returns the OpenClaw gateway auth token.
 func GatewayToken() (string, error) {
 	token := os.Getenv("OPENCLAW_GATEWAY_TOKEN")
 	if token == "" {
@@ -26,7 +25,6 @@ func GatewayToken() (string, error) {
 	return token, nil
 }
 
-// SpawnRequest is the payload for spawning an agent via the OpenClaw gateway.
 type SpawnRequest struct {
 	Tool    string         `json:"tool"`
 	Action  string         `json:"action"`
@@ -34,15 +32,13 @@ type SpawnRequest struct {
 	Session string         `json:"sessionKey,omitempty"`
 }
 
-// SpawnResult is the response from the gateway.
 type SpawnResult struct {
 	Success bool            `json:"success"`
 	Error   json.RawMessage `json:"error,omitempty"`
 	Data    any             `json:"data,omitempty"`
 }
 
-// ErrorString returns the error as a readable string,
-// handling both string and object responses from the gateway.
+// Handles both string and object error responses from the gateway.
 func (r *SpawnResult) ErrorString() string {
 	if len(r.Error) == 0 {
 		return ""
@@ -54,7 +50,6 @@ func (r *SpawnResult) ErrorString() string {
 	return string(r.Error)
 }
 
-// SpawnAgent dispatches an agent via the OpenClaw gateway HTTP API.
 func SpawnAgent(label, prompt, agentID string, timeout int) (*SpawnResult, error) {
 	if timeout == 0 {
 		timeout = 1800
@@ -98,24 +93,35 @@ func SpawnAgent(label, prompt, agentID string, timeout int) (*SpawnResult, error
 	}
 	defer resp.Body.Close()
 
+	rawBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading spawn response: %w", err)
+	}
+
 	var result SpawnResult
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("decoding spawn response: %w", err)
+	if err := json.Unmarshal(rawBody, &result); err != nil {
+		return nil, fmt.Errorf("decoding spawn response (status %d, body: %s): %w", resp.StatusCode, rawBody, err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("gateway returned %d: %s", resp.StatusCode, result.ErrorString())
+		errMsg := result.ErrorString()
+		if errMsg == "" {
+			errMsg = string(rawBody)
+		}
+		return nil, fmt.Errorf("gateway returned %d: %s", resp.StatusCode, errMsg)
 	}
 
 	if !result.Success {
-		return nil, fmt.Errorf("spawn failed: %s", result.ErrorString())
+		errMsg := result.ErrorString()
+		if errMsg == "" {
+			errMsg = string(rawBody)
+		}
+		return nil, fmt.Errorf("spawn failed: %s", errMsg)
 	}
 
 	return &result, nil
 }
 
-// SelectDevAgent picks the best dev agent for an issue.
-// Checks the DB cache first, then calls the "main" agent to decide.
 func SelectDevAgent(
 	repo string,
 	issueNumber int,
@@ -125,15 +131,12 @@ func SelectDevAgent(
 	getCached func(repo string, number int) (string, error),
 	cacheSelection func(repo string, number int, agentID string) error,
 ) (string, error) {
-	// Check cache
 	if cached, err := getCached(repo, issueNumber); err == nil && cached != "" {
 		return cached, nil
 	}
 
-	// Simple heuristic selection
 	selected := selectByHeuristic(title, labels, availableAgents)
 
-	// Cache the selection
 	if issueNumber > 0 {
 		cacheSelection(repo, issueNumber, selected)
 	}
@@ -146,7 +149,6 @@ func selectByHeuristic(title string, labels []string, available []string) string
 		return "backend-dev"
 	}
 
-	// Check for frontend indicators
 	frontendKeywords := []string{"frontend", "ui", "ux", "css", "react", "component", "button", "layout", "design"}
 	text := title
 	for _, l := range labels {

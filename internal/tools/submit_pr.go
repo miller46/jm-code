@@ -8,14 +8,12 @@ import (
 	"strings"
 )
 
-// SubmitPRResult is the outcome of a PR creation attempt.
 type SubmitPRResult struct {
 	Success bool   `json:"success"`
 	URL     string `json:"url,omitempty"`
 	Error   string `json:"error,omitempty"`
 }
 
-// EnsureIssueLink appends "Closes #N" to body if no closing keyword for that issue is present.
 func EnsureIssueLink(body string, issueNumber int) string {
 	if issueNumber <= 0 {
 		return body
@@ -28,7 +26,6 @@ func EnsureIssueLink(body string, issueNumber int) string {
 	return fmt.Sprintf("%s\n\nCloses #%d", body, issueNumber)
 }
 
-// SubmitPR creates a pull request using the gh CLI.
 func SubmitPR(ctx context.Context, repo, head, base, title, body string, issueNumber int, ghConfigDir string, draft bool, labels []string) SubmitPRResult {
 	if base == "" {
 		base = "main"
@@ -70,12 +67,10 @@ func SubmitPR(ctx context.Context, repo, head, base, title, body string, issueNu
 	}
 }
 
-// CleanBody formats a PR body for proper rendering.
 func CleanBody(body string) string {
-	// Replace literal \n with newlines
+	// Replace literal two-char "\n" sequences with actual newlines
 	body = strings.ReplaceAll(body, `\n`, "\n")
 
-	// Ensure blank lines before headers
 	lines := strings.Split(body, "\n")
 	var result []string
 	for i, line := range lines {
@@ -87,12 +82,10 @@ func CleanBody(body string) string {
 
 	body = strings.Join(result, "\n")
 
-	// Ensure Closes/Fixes/Resolves on its own line
 	for _, keyword := range []string{"Closes", "Fixes", "Resolves"} {
 		body = strings.ReplaceAll(body, " "+keyword+" #", "\n\n"+keyword+" #")
 	}
 
-	// Remove excessive blank lines (3+ consecutive)
 	for strings.Contains(body, "\n\n\n") {
 		body = strings.ReplaceAll(body, "\n\n\n", "\n\n")
 	}

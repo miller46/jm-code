@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-// SubmitReview submits a PR review using the gh CLI.
 func SubmitReview(ctx context.Context, repo string, prNumber int, verdict, body, reviewerID, ghConfigDir string) (bool, error) {
 	var flag string
 	switch verdict {

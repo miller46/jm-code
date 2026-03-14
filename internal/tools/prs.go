@@ -8,7 +8,6 @@ import (
 	"github.com/jack/go-cli/internal/db"
 )
 
-// PRResult represents a single PR in the queue response.
 type PRResult struct {
 	ItemID              string            `json:"itemId"`
 	Repo                string            `json:"repo"`
@@ -28,7 +27,6 @@ type PRResult struct {
 	SuggestedDevAgent   string            `json:"suggestedDevAgent"`
 }
 
-// PRQueueResponse is the response from querying the PR queue.
 type PRQueueResponse struct {
 	GeneratedAt string     `json:"generatedAt"`
 	Source      string     `json:"source"`
@@ -40,7 +38,6 @@ type PRQueueResponse struct {
 	PRs []PRResult `json:"prs"`
 }
 
-// actionToDispatchType maps action strings to dispatch type strings.
 var actionToDispatchType = map[string]string{
 	"needs_review":              "review",
 	"needs_fix":                 "fix",
@@ -49,12 +46,10 @@ var actionToDispatchType = map[string]string{
 	"needs_status_fix":          "status_fix",
 }
 
-// PRQueueClient queries the database for PRs needing action.
 type PRQueueClient struct {
 	Store *db.Store
 }
 
-// Query returns PRs matching the given action filter.
 func (c *PRQueueClient) Query(action string, limit int, repos []string) (*PRQueueResponse, error) {
 	if limit == 0 {
 		limit = 20

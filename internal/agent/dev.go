@@ -2,7 +2,6 @@ package agent
 
 import "fmt"
 
-// DevPromptConfig holds the parameters needed to generate dev prompts.
 type DevPromptConfig struct {
 	AgentID      string
 	Repo         string
@@ -14,7 +13,6 @@ type DevPromptConfig struct {
 	GitCommitTool string
 }
 
-// GetDevPrompt returns the prompt for a dev agent implementing an issue.
 func GetDevPrompt(cfg DevPromptConfig) string {
 	if cfg.PRTargetBase == "" {
 		cfg.PRTargetBase = "main"
@@ -48,7 +46,6 @@ Important:
 	)
 }
 
-// GetPRFixPrompt returns the prompt for fixing a PR based on review feedback.
 func GetPRFixPrompt(cfg DevPromptConfig, prNumber int, branch string) string {
 	return fmt.Sprintf(`You are tasked with fixing PR #%d in %s.
 
@@ -70,7 +67,6 @@ Do NOT open a new pull request. The existing PR will be updated by your push.`,
 	)
 }
 
-// GetPRConflictsPrompt returns the prompt for resolving merge conflicts.
 func GetPRConflictsPrompt(agentID, repo, branch, workspace, gitCommitTool string) string {
 	return fmt.Sprintf(`You are tasked with resolving merge conflicts on branch %s in %s.
 
@@ -91,7 +87,6 @@ Important: Do NOT just pick one side. Understand and merge both sets of changes.
 	)
 }
 
-// GetPRFixStatusChecksPrompt returns the prompt for fixing failing CI checks.
 func GetPRFixStatusChecksPrompt(cfg DevPromptConfig, prNumber int, branch string) string {
 	return fmt.Sprintf(`You are tasked with fixing failing CI checks on PR #%d in %s.
 
