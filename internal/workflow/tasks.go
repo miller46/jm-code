@@ -39,7 +39,7 @@ func (d *Dispatcher) DevOpenIssues(ctx context.Context) (int, error) {
 		enabled := agentsCfg.EnabledAgents()
 		agentIDs := make([]string, len(enabled))
 		for i, a := range enabled {
-			agentIDs[i] = a.ID
+			agentIDs[i] = a.Agent
 		}
 
 		selectedAgent, err := agent.SelectDevAgent(
