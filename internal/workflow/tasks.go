@@ -308,6 +308,7 @@ func (d *Dispatcher) MergePRs(ctx context.Context) (int, error) {
 		}
 
 		d.Store.MarkDispatched(pr.ItemID, "merge", pr.HeadSHA)
+		d.Store.UpdateItemStatus(pr.ItemID, string(gh.StatusMerged), string(gh.ActionNone))
 
 		d.Store.InsertDispatchEvent(db.DispatchEvent{
 			ItemID:       pr.ItemID,
