@@ -75,7 +75,7 @@ func (d *Dispatcher) DevOpenIssues(ctx context.Context) (int, error) {
 			continue
 		}
 
-		d.Store.MarkDispatched(issue.ItemID, "review", "")
+		d.Store.UpdateItemStatus(issue.ItemID, string(gh.StatusInProgress), string(gh.ActionNone))
 		count++
 		slog.Info("dispatched dev agent", "issue", issue.IssueNumber, "agent", selectedAgent)
 	}

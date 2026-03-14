@@ -107,6 +107,10 @@ func SpawnAgent(label, prompt, agentID string, timeout int) (*SpawnResult, error
 		return nil, fmt.Errorf("gateway returned %d: %s", resp.StatusCode, result.ErrorString())
 	}
 
+	if !result.Success {
+		return nil, fmt.Errorf("spawn failed: %s", result.ErrorString())
+	}
+
 	return &result, nil
 }
 

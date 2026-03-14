@@ -255,6 +255,15 @@ func (s *Store) QueryWorkflowItems(itemType, action, repo string, limit int) ([]
 	return items, rows.Err()
 }
 
+// UpdateItemStatus sets the status and action for a workflow item.
+func (s *Store) UpdateItemStatus(itemID, status, action string) error {
+	_, err := s.db.Exec(
+		"UPDATE workflow_items SET status = ?, action = ?, updated_at = ? WHERE id = ?",
+		status, action, Now(), itemID,
+	)
+	return err
+}
+
 // MarkDispatched updates the dispatch SHA for the given dispatch type.
 // For "fix", it also increments the iteration counter.
 func (s *Store) MarkDispatched(itemID, dispatchType, headSHA string) error {

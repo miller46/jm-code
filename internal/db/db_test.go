@@ -101,6 +101,40 @@ func TestUpsertWorkflowItem_Update(t *testing.T) {
 	}
 }
 
+func TestUpdateItemStatus(t *testing.T) {
+	store, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer store.Close()
+
+	item := db.WorkflowItem{
+		ID:     "owner/repo#issue#10",
+		Type:   "issue",
+		Repo:   "owner/repo",
+		Number: 10,
+		Title:  "Test issue",
+		Status: "open",
+		Action: "needs_dev",
+	}
+	store.UpsertWorkflowItem(item)
+
+	if err := store.UpdateItemStatus("owner/repo#issue#10", "in_progress", "none"); err != nil {
+		t.Fatalf("UpdateItemStatus: %v", err)
+	}
+
+	got, err := store.GetWorkflowItem("owner/repo#issue#10")
+	if err != nil {
+		t.Fatalf("GetWorkflowItem: %v", err)
+	}
+	if got.Status != "in_progress" {
+		t.Errorf("Status = %q, want %q", got.Status, "in_progress")
+	}
+	if got.Action != "none" {
+		t.Errorf("Action = %q, want %q", got.Action, "none")
+	}
+}
+
 func TestQueryWorkflowItems(t *testing.T) {
 	store, err := db.Open(":memory:")
 	if err != nil {
