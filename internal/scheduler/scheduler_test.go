@@ -8,13 +8,6 @@ import (
 	"github.com/jack/go-cli/internal/scheduler"
 )
 
-func TestNewScheduler(t *testing.T) {
-	s := scheduler.NewScheduler(10)
-	if s == nil {
-		t.Fatal("expected non-nil scheduler")
-	}
-}
-
 func TestScheduler_RunsTasks(t *testing.T) {
 	s := scheduler.NewScheduler(10)
 	s.Start(2)
