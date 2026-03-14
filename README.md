@@ -55,10 +55,9 @@ Agent selection (which dev gets the issue) uses a heuristic based on issue keywo
 
 ## Sample Project
 
-https://github.com/miller46/jm-api
 
-#### Sample workflow - https://github.com/miller46/jm-api/pull/93
- * Manager agent creates spec and GitHub issue https://github.com/miller46/jm-api/issues/92
+#### Sample workflow
+ * Manager agent creates spec and GitHub issue
  * Backend-dev agent creates code and pull request (user miller46backenddev)
  * Automated CI status checks pass
  * Architect agent reviews and approves pull request (user miller46architect)
