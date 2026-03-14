@@ -18,8 +18,12 @@ func GatewayURL() string {
 }
 
 // GatewayToken returns the OpenClaw gateway auth token.
-func GatewayToken() string {
-	return os.Getenv("OPENCLAW_GATEWAY_TOKEN")
+func GatewayToken() (string, error) {
+	token := os.Getenv("OPENCLAW_GATEWAY_TOKEN")
+	if token == "" {
+		return "", fmt.Errorf("OPENCLAW_GATEWAY_TOKEN environment variable is not set")
+	}
+	return token, nil
 }
 
 // SpawnRequest is the payload for spawning an agent via the OpenClaw gateway.
@@ -56,15 +60,20 @@ func SpawnAgent(label, prompt, agentID string, timeout int) (*SpawnResult, error
 		timeout = 1800
 	}
 
+	token, err := GatewayToken()
+	if err != nil {
+		return nil, err
+	}
+
 	payload := SpawnRequest{
 		Tool:   "sessions_spawn",
 		Action: "json",
 		Args: map[string]any{
-			"label":   label,
-			"prompt":  prompt,
-			"agentId": agentID,
-			"timeout": timeout,
-			"cleanup": "keep",
+			"label":              label,
+			"task":               prompt,
+			"agentId":            agentID,
+			"runTimeoutSeconds":  timeout,
+			"cleanup":            "keep",
 		},
 	}
 
@@ -80,9 +89,7 @@ func SpawnAgent(label, prompt, agentID string, timeout int) (*SpawnResult, error
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	if token := GatewayToken(); token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
+	req.Header.Set("Authorization", "Bearer "+token)
 
 	client := &http.Client{Timeout: time.Duration(timeout+60) * time.Second}
 	resp, err := client.Do(req)
