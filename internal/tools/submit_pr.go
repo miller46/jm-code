@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
@@ -14,12 +15,26 @@ type SubmitPRResult struct {
 	Error   string `json:"error,omitempty"`
 }
 
+// EnsureIssueLink appends "Closes #N" to body if no closing keyword for that issue is present.
+func EnsureIssueLink(body string, issueNumber int) string {
+	if issueNumber <= 0 {
+		return body
+	}
+	pattern := fmt.Sprintf(`(?i)(?:closes|fixes|resolves)\s+#%d\b`, issueNumber)
+	re := regexp.MustCompile(pattern)
+	if re.MatchString(body) {
+		return body
+	}
+	return fmt.Sprintf("%s\n\nCloses #%d", body, issueNumber)
+}
+
 // SubmitPR creates a pull request using the gh CLI.
-func SubmitPR(ctx context.Context, repo, head, base, title, body string, ghConfigDir string, draft bool, labels []string) SubmitPRResult {
+func SubmitPR(ctx context.Context, repo, head, base, title, body string, issueNumber int, ghConfigDir string, draft bool, labels []string) SubmitPRResult {
 	if base == "" {
 		base = "main"
 	}
 
+	body = EnsureIssueLink(body, issueNumber)
 	body = CleanBody(body)
 
 	args := []string{"pr", "create",
