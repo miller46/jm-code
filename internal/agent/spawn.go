@@ -32,9 +32,22 @@ type SpawnRequest struct {
 
 // SpawnResult is the response from the gateway.
 type SpawnResult struct {
-	Success bool   `json:"success"`
-	Error   string `json:"error,omitempty"`
-	Data    any    `json:"data,omitempty"`
+	Success bool            `json:"success"`
+	Error   json.RawMessage `json:"error,omitempty"`
+	Data    any             `json:"data,omitempty"`
+}
+
+// ErrorString returns the error as a readable string,
+// handling both string and object responses from the gateway.
+func (r *SpawnResult) ErrorString() string {
+	if len(r.Error) == 0 {
+		return ""
+	}
+	var s string
+	if json.Unmarshal(r.Error, &s) == nil {
+		return s
+	}
+	return string(r.Error)
 }
 
 // SpawnAgent dispatches an agent via the OpenClaw gateway HTTP API.
@@ -84,7 +97,7 @@ func SpawnAgent(label, prompt, agentID string, timeout int) (*SpawnResult, error
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("gateway returned %d: %s", resp.StatusCode, result.Error)
+		return nil, fmt.Errorf("gateway returned %d: %s", resp.StatusCode, result.ErrorString())
 	}
 
 	return &result, nil
