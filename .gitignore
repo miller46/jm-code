@@ -1,5 +1,2 @@
 /.idea
-/github/__pycache__
-*.pyc
-*.pyc
-/tests/__pycache__
+/orchestrator

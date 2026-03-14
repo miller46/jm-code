@@ -106,7 +106,7 @@ func SelectDevAgent(
 		return cached, nil
 	}
 
-	// Simple heuristic selection (matches Python's suggest_agent)
+	// Simple heuristic selection
 	selected := selectByHeuristic(title, labels, availableAgents)
 
 	// Cache the selection
