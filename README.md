@@ -1,6 +1,8 @@
 # jm-code
 
-Bot that syncs with GitHub and spawns agents to write code, review pull requests, and fix issues in a loop.
+Fully automated AI dev team
+
+Paved roads and guardrails for specialized OpenClaw agents. GitHub actions for code reivew, CI/CD, and other quality gates.
 
 ```
 Issue -> Assign agent -> Write code -> PR -> Review -> Fix/Re-review loop -> Merge
