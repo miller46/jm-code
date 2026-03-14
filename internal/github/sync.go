@@ -202,6 +202,33 @@ func UpdateIteration(action Action, iteration, maxIterations int) (int, Action) 
 	return iteration, action
 }
 
+// ReconcileDispatchSHAs clears dispatch SHAs for reviewers that were
+// dispatched for the current head SHA but never actually reviewed it.
+// This makes the system self-healing when a dispatch fails silently.
+func ReconcileDispatchSHAs(existingJSON string, eval *ReviewEvaluation, headSHA string) string {
+	dispatchMap := make(map[string]string)
+	if err := json.Unmarshal([]byte(existingJSON), &dispatchMap); err != nil {
+		return existingJSON
+	}
+
+	reviewMap := make(map[string]string)
+	if eval != nil {
+		reviewMap = eval.ReviewSHAByReviewer
+	}
+
+	for reviewer, dispatchSHA := range dispatchMap {
+		if dispatchSHA == headSHA && reviewMap[reviewer] != headSHA {
+			delete(dispatchMap, reviewer)
+		}
+	}
+
+	data, err := json.Marshal(dispatchMap)
+	if err != nil {
+		return existingJSON
+	}
+	return string(data)
+}
+
 var linkedIssueRe = regexp.MustCompile(`(?i)(?:closes|fixes|resolves)\s+#(\d+)`)
 
 func FindLinkedIssue(body, title string) int {
@@ -575,7 +602,9 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 			}
 		}
 		if existing != nil {
-			reviewerDispatchSHAs = existing.ReviewerDispatchSHAsJSON
+			reviewerDispatchSHAs = ReconcileDispatchSHAs(
+				existing.ReviewerDispatchSHAsJSON, eval, pr.HeadRefOid,
+			)
 		}
 
 		checksJSON := "[]"

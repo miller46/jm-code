@@ -331,6 +331,68 @@ func TestFindLinkedIssue(t *testing.T) {
 	}
 }
 
+func TestReconcileDispatchSHAs(t *testing.T) {
+	tests := []struct {
+		name     string
+		existing string
+		eval     *github.ReviewEvaluation
+		headSHA  string
+		want     string
+	}{
+		{
+			name:     "clears stale dispatch (dispatched but not reviewed)",
+			existing: `{"rev1":"sha1"}`,
+			eval:     &github.ReviewEvaluation{ReviewSHAByReviewer: map[string]string{}},
+			headSHA:  "sha1",
+			want:     `{}`,
+		},
+		{
+			name:     "preserves dispatch when reviewer actually reviewed",
+			existing: `{"rev1":"sha1"}`,
+			eval:     &github.ReviewEvaluation{ReviewSHAByReviewer: map[string]string{"rev1": "sha1"}},
+			headSHA:  "sha1",
+			want:     `{"rev1":"sha1"}`,
+		},
+		{
+			name:     "preserves dispatch for different SHA (old commit)",
+			existing: `{"rev1":"sha0"}`,
+			eval:     &github.ReviewEvaluation{ReviewSHAByReviewer: map[string]string{}},
+			headSHA:  "sha1",
+			want:     `{"rev1":"sha0"}`,
+		},
+		{
+			name:     "mixed: clears stale, preserves reviewed",
+			existing: `{"rev1":"sha1","rev2":"sha1"}`,
+			eval:     &github.ReviewEvaluation{ReviewSHAByReviewer: map[string]string{"rev2": "sha1"}},
+			headSHA:  "sha1",
+			want:     `{"rev2":"sha1"}`,
+		},
+		{
+			name:     "nil eval clears all matching dispatches",
+			existing: `{"rev1":"sha1"}`,
+			eval:     nil,
+			headSHA:  "sha1",
+			want:     `{}`,
+		},
+		{
+			name:     "corrupt JSON returns original",
+			existing: `not-json`,
+			eval:     nil,
+			headSHA:  "sha1",
+			want:     `not-json`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := github.ReconcileDispatchSHAs(tt.existing, tt.eval, tt.headSHA)
+			if got != tt.want {
+				t.Errorf("ReconcileDispatchSHAs() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestHasFailingChecks(t *testing.T) {
 	tests := []struct {
 		name   string
