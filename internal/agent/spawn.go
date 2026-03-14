@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -164,9 +165,9 @@ func selectByHeuristic(title string, labels []string, available []string) string
 	}
 
 	for _, kw := range frontendKeywords {
-		if contains(text, kw) {
+		if containsIgnoreCase(text, kw) {
 			for _, a := range available {
-				if contains(a, "frontend") {
+				if containsIgnoreCase(a, "frontend") {
 					return a
 				}
 			}
@@ -176,33 +177,6 @@ func selectByHeuristic(title string, labels []string, available []string) string
 	return available[0]
 }
 
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsLower(s, substr))
-}
-
-func containsLower(s, substr string) bool {
-	s = toLower(s)
-	substr = toLower(substr)
-	return len(s) >= len(substr) && findSubstring(s, substr)
-}
-
-func toLower(s string) string {
-	b := make([]byte, len(s))
-	for i := range s {
-		c := s[i]
-		if c >= 'A' && c <= 'Z' {
-			c += 'a' - 'A'
-		}
-		b[i] = c
-	}
-	return string(b)
-}
-
-func findSubstring(s, sub string) bool {
-	for i := 0; i <= len(s)-len(sub); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
+func containsIgnoreCase(s, substr string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }

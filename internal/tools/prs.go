@@ -3,6 +3,7 @@ package tools
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/jack/go-cli/internal/db"
@@ -82,10 +83,14 @@ func (c *PRQueueClient) Query(action string, limit int, repos []string) (*PRQueu
 		}
 
 		reviewerSHAs := make(map[string]string)
-		json.Unmarshal([]byte(item.ReviewerSHAsJSON), &reviewerSHAs)
+		if err := json.Unmarshal([]byte(item.ReviewerSHAsJSON), &reviewerSHAs); err != nil {
+			slog.Warn("corrupt reviewer SHAs JSON", "item", item.ID, "err", err)
+		}
 
 		reviewerDispatchSHAs := make(map[string]string)
-		json.Unmarshal([]byte(item.ReviewerDispatchSHAsJSON), &reviewerDispatchSHAs)
+		if err := json.Unmarshal([]byte(item.ReviewerDispatchSHAsJSON), &reviewerDispatchSHAs); err != nil {
+			slog.Warn("corrupt reviewer dispatch SHAs JSON", "item", item.ID, "err", err)
+		}
 
 		dispatchType := actionToDispatchType[action]
 

@@ -1,6 +1,9 @@
 package db
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type WorkflowItem struct {
 	ID          string `json:"id"`
@@ -81,4 +84,57 @@ type AgentSelection struct {
 
 func Now() string {
 	return time.Now().UTC().Format(time.RFC3339)
+}
+
+// workflowItemColumns is the single source of truth for column ordering.
+const workflowItemColumns = `id, type, repo, number, title, github_state, repo_scoped_id,
+	status, action,
+	head_sha, head_ref_name, last_reviewed_sha, reviews_json,
+	all_reviewers_approved, any_changes_requested, sha_matches_review, has_conflicts,
+	reviewer_shas_json, reviewer_dispatch_shas_json,
+	last_review_dispatch_sha, last_fix_dispatch_sha, last_merge_dispatch_sha,
+	last_conflict_dispatch_sha, last_status_fix_dispatch_sha, last_head_sha_seen,
+	status_check_rollup, linked_issue_number,
+	iteration, max_iterations,
+	assigned_agent, lock_expires,
+	created_at, updated_at, last_sync`
+
+// workflowItemPlaceholders is the matching ? list for workflowItemColumns.
+var workflowItemPlaceholders = func() string {
+	n := strings.Count(workflowItemColumns, ",") + 1
+	return strings.Join(strings.Split(strings.Repeat("?,", n), ",")[:n], ", ")
+}()
+
+// values returns all field values in the same order as workflowItemColumns.
+func (w *WorkflowItem) values() []any {
+	return []any{
+		w.ID, w.Type, w.Repo, w.Number, w.Title, w.GitHubState, w.RepoScopedID,
+		w.Status, w.Action,
+		w.HeadSHA, w.HeadRefName, w.LastReviewedSHA, w.ReviewsJSON,
+		w.AllReviewersApproved, w.AnyChangesRequested, w.SHAMatchesReview, w.HasConflicts,
+		w.ReviewerSHAsJSON, w.ReviewerDispatchSHAsJSON,
+		w.LastReviewDispatchSHA, w.LastFixDispatchSHA, w.LastMergeDispatchSHA,
+		w.LastConflictDispatchSHA, w.LastStatusFixDispatchSHA, w.LastHeadSHASeen,
+		w.StatusCheckRollup, w.LinkedIssueNumber,
+		w.Iteration, w.MaxIterations,
+		w.AssignedAgent, w.LockExpires,
+		w.CreatedAt, w.UpdatedAt, w.LastSync,
+	}
+}
+
+// scanDest returns pointers to all fields in the same order as workflowItemColumns.
+func (w *WorkflowItem) scanDest() []any {
+	return []any{
+		&w.ID, &w.Type, &w.Repo, &w.Number, &w.Title, &w.GitHubState, &w.RepoScopedID,
+		&w.Status, &w.Action,
+		&w.HeadSHA, &w.HeadRefName, &w.LastReviewedSHA, &w.ReviewsJSON,
+		&w.AllReviewersApproved, &w.AnyChangesRequested, &w.SHAMatchesReview, &w.HasConflicts,
+		&w.ReviewerSHAsJSON, &w.ReviewerDispatchSHAsJSON,
+		&w.LastReviewDispatchSHA, &w.LastFixDispatchSHA, &w.LastMergeDispatchSHA,
+		&w.LastConflictDispatchSHA, &w.LastStatusFixDispatchSHA, &w.LastHeadSHASeen,
+		&w.StatusCheckRollup, &w.LinkedIssueNumber,
+		&w.Iteration, &w.MaxIterations,
+		&w.AssignedAgent, &w.LockExpires,
+		&w.CreatedAt, &w.UpdatedAt, &w.LastSync,
+	}
 }

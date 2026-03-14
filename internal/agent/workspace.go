@@ -85,13 +85,13 @@ func CreateWorktree(ctx context.Context, barePath, workDir, branch, startPoint s
 
 	cmd := exec.CommandContext(ctx, "git", args...)
 	if out, err := cmd.CombinedOutput(); err != nil {
+		// Clean up stale worktree and retry once
 		exec.CommandContext(ctx, "git", "-C", barePath, "worktree", "remove", "--force", wtPath).Run()
 		os.RemoveAll(wtPath)
 		cmd = exec.CommandContext(ctx, "git", args...)
 		if retryOut, retryErr := cmd.CombinedOutput(); retryErr != nil {
-			return "", fmt.Errorf("creating worktree: %s: %w", retryOut, retryErr)
+			return "", fmt.Errorf("creating worktree (original: %s): retry: %s: %w", out, retryOut, retryErr)
 		}
-		_ = out
 	}
 
 	return wtPath, nil

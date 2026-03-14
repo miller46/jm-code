@@ -103,16 +103,16 @@ func (d *Dispatcher) ReviewOpenPRs(ctx context.Context) (int, error) {
 				continue
 			}
 
-			taskFile, workspace, err := agent.SetupReviewerWorkspace(ctx, reviewer.Name, pr.Repo, pr.PRNumber, pr.HeadRefName)
+			taskFile, workspace, err := agent.SetupReviewerWorkspace(ctx, reviewer.Agent, pr.Repo, pr.PRNumber, pr.HeadRefName)
 			if err != nil {
 				slog.Error("setting up reviewer workspace", "pr", pr.PRNumber, "reviewer", reviewer.Name, "err", err)
 				continue
 			}
 
-			prompt := agent.GetReviewerPrompt(reviewer.Name, pr.Repo, pr.PRNumber, workspace, taskFile, agent.ToolCommand("submit-review"))
+			prompt := agent.GetReviewerPrompt(reviewer.Agent, pr.Repo, pr.PRNumber, workspace, taskFile, agent.ToolCommand("submit-review"))
 
 			label := fmt.Sprintf("review:%s#%d:%s", pr.Repo, pr.PRNumber, reviewer.Name)
-			_, err = agent.SpawnAgent(label, prompt, reviewer.Name, reviewer.Timeout)
+			_, err = agent.SpawnAgent(label, prompt, reviewer.Agent, reviewer.Timeout)
 			if err != nil {
 				slog.Error("spawning reviewer", "pr", pr.PRNumber, "reviewer", reviewer.Name, "err", err)
 				continue
@@ -125,6 +125,25 @@ func (d *Dispatcher) ReviewOpenPRs(ctx context.Context) (int, error) {
 	}
 
 	return count, nil
+}
+
+// resolveDevAgentID looks up the OpenClaw agent ID from the agents config.
+// Falls back to the first enabled agent, or the raw input if config can't be loaded.
+func (d *Dispatcher) resolveDevAgentID(repo, name string) string {
+	agentsCfg, err := config.LoadAgentsForRepo(d.ConfigDir, repo)
+	if err != nil {
+		return name
+	}
+	for _, a := range agentsCfg.EnabledAgents() {
+		if a.Name == name || a.ID == name || a.Agent == name {
+			return a.Agent
+		}
+	}
+	enabled := agentsCfg.EnabledAgents()
+	if len(enabled) > 0 {
+		return enabled[0].Agent
+	}
+	return name
 }
 
 func (d *Dispatcher) FixOpenPRs(ctx context.Context) (int, error) {
@@ -148,6 +167,7 @@ func (d *Dispatcher) FixOpenPRs(ctx context.Context) (int, error) {
 		if devAgent == "" {
 			devAgent = "backend-dev"
 		}
+		devAgent = d.resolveDevAgentID(pr.Repo, devAgent)
 
 		taskFile, workspace, err := agent.SetupFixWorkspace(ctx, devAgent, pr.Repo, pr.PRNumber, pr.HeadRefName)
 		if err != nil {
@@ -196,6 +216,7 @@ func (d *Dispatcher) FixPRMergeConflicts(ctx context.Context) (int, error) {
 		if devAgent == "" {
 			devAgent = "backend-dev"
 		}
+		devAgent = d.resolveDevAgentID(pr.Repo, devAgent)
 
 		workspace, err := agent.SetupConflictWorkspace(ctx, devAgent, pr.Repo, pr.HeadRefName)
 		if err != nil {
@@ -238,6 +259,7 @@ func (d *Dispatcher) FixStatusChecks(ctx context.Context) (int, error) {
 		if devAgent == "" {
 			devAgent = "backend-dev"
 		}
+		devAgent = d.resolveDevAgentID(pr.Repo, devAgent)
 
 		taskFile, workspace, err := agent.SetupStatusFixWorkspace(ctx, devAgent, pr.Repo, pr.PRNumber, pr.HeadRefName)
 		if err != nil {
@@ -276,10 +298,6 @@ func (d *Dispatcher) MergePRs(ctx context.Context) (int, error) {
 	}
 
 	strategy := "merge"
-	wfCfg, err := config.LoadWorkflow(d.ConfigDir)
-	if err == nil && wfCfg.MergeAgent.Enabled {
-		_ = wfCfg
-	}
 
 	count := 0
 	for _, pr := range resp.PRs {
@@ -340,6 +358,8 @@ func (d *Dispatcher) RunAll(ctx context.Context) error {
 
 func reviewerSHAsFromJSON(raw string) map[string]string {
 	m := make(map[string]string)
-	json.Unmarshal([]byte(raw), &m)
+	if err := json.Unmarshal([]byte(raw), &m); err != nil {
+		slog.Warn("corrupt reviewer SHAs JSON", "err", err)
+	}
 	return m
 }

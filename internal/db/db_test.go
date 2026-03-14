@@ -3,6 +3,7 @@ package db_test
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/jack/go-cli/internal/db"
 )
@@ -257,7 +258,7 @@ func TestAcquireLock(t *testing.T) {
 	}
 	defer store.Close()
 
-	ok, err := store.AcquireLock("test-lock", "owner1", 300)
+	ok, err := store.AcquireLock("test-lock", "owner1", 300*time.Second)
 	if err != nil {
 		t.Fatalf("AcquireLock: %v", err)
 	}
@@ -266,7 +267,7 @@ func TestAcquireLock(t *testing.T) {
 	}
 
 	// Second acquire should fail
-	ok2, err := store.AcquireLock("test-lock", "owner2", 300)
+	ok2, err := store.AcquireLock("test-lock", "owner2", 300*time.Second)
 	if err != nil {
 		t.Fatalf("AcquireLock: %v", err)
 	}

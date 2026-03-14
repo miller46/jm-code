@@ -3,10 +3,16 @@ package db
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
+
+func IsNotFound(err error) bool {
+	return errors.Is(err, sql.ErrNoRows)
+}
 
 type Store struct {
 	db *sql.DB
@@ -120,96 +126,27 @@ func (s *Store) migrate() error {
 }
 
 func (s *Store) UpsertWorkflowItem(item WorkflowItem) error {
-	_, err := s.db.Exec(`
-		INSERT OR REPLACE INTO workflow_items (
-			id, type, repo, number, title, github_state, repo_scoped_id,
-			status, action,
-			head_sha, head_ref_name, last_reviewed_sha, reviews_json,
-			all_reviewers_approved, any_changes_requested, sha_matches_review, has_conflicts,
-			reviewer_shas_json, reviewer_dispatch_shas_json,
-			last_review_dispatch_sha, last_fix_dispatch_sha, last_merge_dispatch_sha,
-			last_conflict_dispatch_sha, last_status_fix_dispatch_sha, last_head_sha_seen,
-			status_check_rollup, linked_issue_number,
-			iteration, max_iterations,
-			assigned_agent, lock_expires,
-			created_at, updated_at, last_sync
-		) VALUES (
-			?, ?, ?, ?, ?, ?, ?,
-			?, ?,
-			?, ?, ?, ?,
-			?, ?, ?, ?,
-			?, ?,
-			?, ?, ?,
-			?, ?, ?,
-			?, ?,
-			?, ?,
-			?, ?,
-			?, ?, ?
-		)`,
-		item.ID, item.Type, item.Repo, item.Number, item.Title, item.GitHubState, item.RepoScopedID,
-		item.Status, item.Action,
-		item.HeadSHA, item.HeadRefName, item.LastReviewedSHA, item.ReviewsJSON,
-		item.AllReviewersApproved, item.AnyChangesRequested, item.SHAMatchesReview, item.HasConflicts,
-		item.ReviewerSHAsJSON, item.ReviewerDispatchSHAsJSON,
-		item.LastReviewDispatchSHA, item.LastFixDispatchSHA, item.LastMergeDispatchSHA,
-		item.LastConflictDispatchSHA, item.LastStatusFixDispatchSHA, item.LastHeadSHASeen,
-		item.StatusCheckRollup, item.LinkedIssueNumber,
-		item.Iteration, item.MaxIterations,
-		item.AssignedAgent, item.LockExpires,
-		item.CreatedAt, item.UpdatedAt, item.LastSync,
+	query := fmt.Sprintf(
+		"INSERT OR REPLACE INTO workflow_items (%s) VALUES (%s)",
+		workflowItemColumns, workflowItemPlaceholders,
 	)
+	_, err := s.db.Exec(query, item.values()...)
 	return err
 }
 
 func (s *Store) GetWorkflowItem(id string) (*WorkflowItem, error) {
-	row := s.db.QueryRow(`SELECT
-		id, type, repo, number, title, github_state, repo_scoped_id,
-		status, action,
-		head_sha, head_ref_name, last_reviewed_sha, reviews_json,
-		all_reviewers_approved, any_changes_requested, sha_matches_review, has_conflicts,
-		reviewer_shas_json, reviewer_dispatch_shas_json,
-		last_review_dispatch_sha, last_fix_dispatch_sha, last_merge_dispatch_sha,
-		last_conflict_dispatch_sha, last_status_fix_dispatch_sha, last_head_sha_seen,
-		status_check_rollup, linked_issue_number,
-		iteration, max_iterations,
-		assigned_agent, lock_expires,
-		created_at, updated_at, last_sync
-		FROM workflow_items WHERE id = ?`, id)
+	query := fmt.Sprintf("SELECT %s FROM workflow_items WHERE id = ?", workflowItemColumns)
+	row := s.db.QueryRow(query, id)
 
 	var item WorkflowItem
-	err := row.Scan(
-		&item.ID, &item.Type, &item.Repo, &item.Number, &item.Title, &item.GitHubState, &item.RepoScopedID,
-		&item.Status, &item.Action,
-		&item.HeadSHA, &item.HeadRefName, &item.LastReviewedSHA, &item.ReviewsJSON,
-		&item.AllReviewersApproved, &item.AnyChangesRequested, &item.SHAMatchesReview, &item.HasConflicts,
-		&item.ReviewerSHAsJSON, &item.ReviewerDispatchSHAsJSON,
-		&item.LastReviewDispatchSHA, &item.LastFixDispatchSHA, &item.LastMergeDispatchSHA,
-		&item.LastConflictDispatchSHA, &item.LastStatusFixDispatchSHA, &item.LastHeadSHASeen,
-		&item.StatusCheckRollup, &item.LinkedIssueNumber,
-		&item.Iteration, &item.MaxIterations,
-		&item.AssignedAgent, &item.LockExpires,
-		&item.CreatedAt, &item.UpdatedAt, &item.LastSync,
-	)
-	if err != nil {
+	if err := row.Scan(item.scanDest()...); err != nil {
 		return nil, fmt.Errorf("getting workflow item %q: %w", id, err)
 	}
 	return &item, nil
 }
 
 func (s *Store) QueryWorkflowItems(itemType, action, repo string, limit int) ([]WorkflowItem, error) {
-	query := `SELECT
-		id, type, repo, number, title, github_state, repo_scoped_id,
-		status, action,
-		head_sha, head_ref_name, last_reviewed_sha, reviews_json,
-		all_reviewers_approved, any_changes_requested, sha_matches_review, has_conflicts,
-		reviewer_shas_json, reviewer_dispatch_shas_json,
-		last_review_dispatch_sha, last_fix_dispatch_sha, last_merge_dispatch_sha,
-		last_conflict_dispatch_sha, last_status_fix_dispatch_sha, last_head_sha_seen,
-		status_check_rollup, linked_issue_number,
-		iteration, max_iterations,
-		assigned_agent, lock_expires,
-		created_at, updated_at, last_sync
-		FROM workflow_items WHERE type = ? AND action = ?`
+	query := fmt.Sprintf("SELECT %s FROM workflow_items WHERE type = ? AND action = ?", workflowItemColumns)
 	args := []any{itemType, action}
 
 	if repo != "" {
@@ -228,19 +165,7 @@ func (s *Store) QueryWorkflowItems(itemType, action, repo string, limit int) ([]
 	var items []WorkflowItem
 	for rows.Next() {
 		var item WorkflowItem
-		if err := rows.Scan(
-			&item.ID, &item.Type, &item.Repo, &item.Number, &item.Title, &item.GitHubState, &item.RepoScopedID,
-			&item.Status, &item.Action,
-			&item.HeadSHA, &item.HeadRefName, &item.LastReviewedSHA, &item.ReviewsJSON,
-			&item.AllReviewersApproved, &item.AnyChangesRequested, &item.SHAMatchesReview, &item.HasConflicts,
-			&item.ReviewerSHAsJSON, &item.ReviewerDispatchSHAsJSON,
-			&item.LastReviewDispatchSHA, &item.LastFixDispatchSHA, &item.LastMergeDispatchSHA,
-			&item.LastConflictDispatchSHA, &item.LastStatusFixDispatchSHA, &item.LastHeadSHASeen,
-			&item.StatusCheckRollup, &item.LinkedIssueNumber,
-			&item.Iteration, &item.MaxIterations,
-			&item.AssignedAgent, &item.LockExpires,
-			&item.CreatedAt, &item.UpdatedAt, &item.LastSync,
-		); err != nil {
+		if err := rows.Scan(item.scanDest()...); err != nil {
 			return nil, fmt.Errorf("scanning workflow item: %w", err)
 		}
 		items = append(items, item)
@@ -256,34 +181,22 @@ func (s *Store) UpdateItemStatus(itemID, status, action string) error {
 	return err
 }
 
-// For "fix" dispatch type, also increments the iteration counter.
+// dispatchQueries maps dispatch type to the corresponding UPDATE query.
+// Using pre-built queries instead of fmt.Sprintf with column names.
+var dispatchQueries = map[string]string{
+	"review":     "UPDATE workflow_items SET last_review_dispatch_sha = ?, updated_at = ? WHERE id = ?",
+	"fix":        "UPDATE workflow_items SET last_fix_dispatch_sha = ?, updated_at = ?, iteration = iteration + 1 WHERE id = ?",
+	"merge":      "UPDATE workflow_items SET last_merge_dispatch_sha = ?, updated_at = ? WHERE id = ?",
+	"conflict":   "UPDATE workflow_items SET last_conflict_dispatch_sha = ?, updated_at = ? WHERE id = ?",
+	"status_fix": "UPDATE workflow_items SET last_status_fix_dispatch_sha = ?, updated_at = ? WHERE id = ?",
+}
+
 func (s *Store) MarkDispatched(itemID, dispatchType, headSHA string) error {
-	var col string
-	switch dispatchType {
-	case "review":
-		col = "last_review_dispatch_sha"
-	case "fix":
-		col = "last_fix_dispatch_sha"
-	case "merge":
-		col = "last_merge_dispatch_sha"
-	case "conflict":
-		col = "last_conflict_dispatch_sha"
-	case "status_fix":
-		col = "last_status_fix_dispatch_sha"
-	default:
+	query, ok := dispatchQueries[dispatchType]
+	if !ok {
 		return fmt.Errorf("unknown dispatch type: %q", dispatchType)
 	}
-
-	query := fmt.Sprintf("UPDATE workflow_items SET %s = ?, updated_at = ?", col)
-	args := []any{headSHA, Now()}
-
-	if dispatchType == "fix" {
-		query += ", iteration = iteration + 1"
-	}
-	query += " WHERE id = ?"
-	args = append(args, itemID)
-
-	_, err := s.db.Exec(query, args...)
+	_, err := s.db.Exec(query, headSHA, Now(), itemID)
 	return err
 }
 
@@ -298,11 +211,16 @@ func (s *Store) MarkReviewerDispatched(itemID, reviewer, headSHA string) error {
 
 	shas := make(map[string]string)
 	if current != "" {
-		json.Unmarshal([]byte(current), &shas)
+		if err := json.Unmarshal([]byte(current), &shas); err != nil {
+			return fmt.Errorf("parsing reviewer dispatch SHAs JSON: %w", err)
+		}
 	}
 	shas[reviewer] = headSHA
 
-	data, _ := json.Marshal(shas)
+	data, err := json.Marshal(shas)
+	if err != nil {
+		return fmt.Errorf("marshaling reviewer dispatch SHAs: %w", err)
+	}
 	_, err = s.db.Exec(
 		"UPDATE workflow_items SET reviewer_dispatch_shas_json = ?, updated_at = ? WHERE id = ?",
 		string(data), Now(), itemID,
@@ -310,12 +228,14 @@ func (s *Store) MarkReviewerDispatched(itemID, reviewer, headSHA string) error {
 	return err
 }
 
-func (s *Store) AcquireLock(name, owner string, durationSeconds int) (bool, error) {
-	expiresAt := fmt.Sprintf("%d", durationSeconds)
+func (s *Store) AcquireLock(name, owner string, duration time.Duration) (bool, error) {
+	expiresAt := time.Now().UTC().Add(duration).Format(time.RFC3339)
 
 	result, err := s.db.Exec(
-		"INSERT OR IGNORE INTO locks (name, owner, expires_at) VALUES (?, ?, ?)",
-		name, owner, expiresAt,
+		`INSERT INTO locks (name, owner, expires_at) VALUES (?, ?, ?)
+		 ON CONFLICT(name) DO UPDATE SET owner = excluded.owner, expires_at = excluded.expires_at
+		 WHERE expires_at < ?`,
+		name, owner, expiresAt, Now(),
 	)
 	if err != nil {
 		return false, fmt.Errorf("acquiring lock: %w", err)

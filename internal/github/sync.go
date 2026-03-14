@@ -11,15 +11,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jack/go-cli/internal/config"
 	"github.com/jack/go-cli/internal/db"
 )
 
-type ApprovalRules struct {
-	Mode              string   `json:"mode"`
-	MinApprovals      int      `json:"min_approvals"`
-	RequiredReviewers []string `json:"required_reviewers"`
-	VetoPowers        []string `json:"veto_powers"`
-}
+type ApprovalRules = config.ApprovalRules
 
 type DispatchState struct {
 	LastReviewDispatchSHA    string
@@ -219,11 +215,16 @@ func FindLinkedIssue(body, title string) int {
 }
 
 func FindLinkedPRs(prs []PRDetail, issueNumber int) int {
-	pattern := fmt.Sprintf(`(?i)(?:closes|fixes|resolves)\s+#%d\b`, issueNumber)
-	re := regexp.MustCompile(pattern)
+	target := fmt.Sprintf("#%d", issueNumber)
 	for _, pr := range prs {
-		if re.MatchString(pr.Body) || re.MatchString(pr.Title) {
-			return pr.Number
+		text := pr.Body + " " + pr.Title
+		if !strings.Contains(text, target) {
+			continue
+		}
+		if linkedIssueRe.MatchString(pr.Body) || linkedIssueRe.MatchString(pr.Title) {
+			if FindLinkedIssue(pr.Body, pr.Title) == issueNumber {
+				return pr.Number
+			}
 		}
 	}
 	return 0
@@ -488,7 +489,11 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 		linkedPR := FindLinkedPRs(prs, issue.Number)
 		itemID := fmt.Sprintf("%s#issue#%d", repo, issue.Number)
 
-		existing, _ := s.Store.GetWorkflowItem(itemID)
+		existing, err := s.Store.GetWorkflowItem(itemID)
+		if err != nil && !db.IsNotFound(err) {
+			slog.Error("reading existing issue", "repo", repo, "number", issue.Number, "err", err)
+			continue
+		}
 		status, action := DetermineIssueAction(issue, existing, linkedPR)
 
 		if existing != nil {
@@ -536,7 +541,11 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 
 	for _, pr := range prs {
 		itemID := fmt.Sprintf("%s#pr#%d", repo, pr.Number)
-		existing, _ := s.Store.GetWorkflowItem(itemID)
+		existing, err := s.Store.GetWorkflowItem(itemID)
+		if err != nil && !db.IsNotFound(err) {
+			slog.Error("reading existing PR", "repo", repo, "number", pr.Number, "err", err)
+			continue
+		}
 
 		status, action, allApproved, anyChanges, eval := DeterminePRAction(pr, existing, requiredReviewers, rules)
 

@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -67,12 +68,7 @@ func (b *Bot) tick(ctx context.Context) error {
 			if err != nil {
 				return nil
 			}
-			return &gh.ApprovalRules{
-				Mode:              cfg.ApprovalRules.Mode,
-				MinApprovals:      cfg.ApprovalRules.MinApprovals,
-				RequiredReviewers: cfg.ApprovalRules.RequiredReviewers,
-				VetoPowers:        cfg.ApprovalRules.VetoPowers,
-			}
+			return &cfg.ApprovalRules
 		},
 		MaxIterations: 3,
 	}
@@ -97,7 +93,9 @@ func (b *Bot) tick(ctx context.Context) error {
 	finishedAt := db.Now()
 	errJSON := "null"
 	if len(syncErrors) > 0 {
-		errJSON = fmt.Sprintf("%q", syncErrors)
+		if data, err := json.Marshal(syncErrors); err == nil {
+			errJSON = string(data)
+		}
 	}
 	b.Store.InsertSyncLog(startedAt, finishedAt, totalSynced, errJSON)
 
