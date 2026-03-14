@@ -1,37 +1,20 @@
 {
-  "_comment": "DEFAULT reviewer config. Per-repo overrides: repos/{owner}/{repo}/config/reviewers.json. Override replaces the entire required_reviewers list (no merge).",
   "reviewers": [
     {
       "name": "miller46codesnob",
       "agent": "code-snob",
       "gh_config_dir": "~/.openclaw/agents/code-snob/agent",
-      "template": "prompts/review/code_snob.md",
       "timeout": 900,
-      "focus": "style, best practices, and potential bugs"
+      "focus": "style, best practices, and potential bugs",
+      "enabled": true
     },
     {
       "name": "miller46architect",
       "agent": "architect",
       "gh_config_dir": "~/.openclaw/agents/architect/agent",
-      "template": "prompts/review/architect.md",
       "timeout": 900,
-      "focus": "design, security, and maintainability"
-    },
-    {
-      "name": "miller46frontenddev",
-      "agent": "frontend-dev",
-      "gh_config_dir": "~/.openclaw/agents/frontend-dev/agent",
-      "template": "prompts/review/ux.md",
-      "timeout": 900,
-      "focus": "ux, design, and ergonomics"
-    },
-    {
-      "name": "miller46backenddev",
-      "agent": "backend-dev",
-      "gh_config_dir": "~/.openclaw/agents/backend-dev/agent",
-      "template": "prompts/review/architect.md",
-      "timeout": 900,
-      "focus": "data modeling, flow, and backend architecture"
+      "focus": "design, security, and maintainability",
+      "enabled": true
     }
   ],
   "approval_rules": {
