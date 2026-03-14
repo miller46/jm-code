@@ -34,9 +34,9 @@ type SpawnRequest struct {
 }
 
 type SpawnResult struct {
-	Success bool            `json:"success"`
+	Success bool            `json:"ok"`
 	Error   json.RawMessage `json:"error,omitempty"`
-	Data    any             `json:"data,omitempty"`
+	Data    any             `json:"result,omitempty"`
 }
 
 // Handles both string and object error responses from the gateway.

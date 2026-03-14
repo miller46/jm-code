@@ -56,13 +56,13 @@ func (d *Dispatcher) DevOpenIssues(ctx context.Context) (int, error) {
 		}
 
 		prompt := agent.GetDevPrompt(agent.DevPromptConfig{
-			AgentID:      selectedAgent,
-			Repo:         issue.Repo,
-			TaskFile:     taskFile,
-			IssueNumber:  issue.IssueNumber,
-			Workspace:    workspace,
-			SubmitPRTool: "submit_pr",
-			GitCommitTool: "git_commit",
+			AgentID:       selectedAgent,
+			Repo:          issue.Repo,
+			TaskFile:      taskFile,
+			IssueNumber:   issue.IssueNumber,
+			Workspace:     workspace,
+			SubmitPRTool:  agent.ToolCommand("submit-pr"),
+			GitCommitTool: agent.ToolCommand("git-commit"),
 		})
 
 		label := fmt.Sprintf("dev:%s#%d", issue.Repo, issue.IssueNumber)
@@ -109,7 +109,7 @@ func (d *Dispatcher) ReviewOpenPRs(ctx context.Context) (int, error) {
 				continue
 			}
 
-			prompt := agent.GetReviewerPrompt(reviewer.Name, pr.Repo, pr.PRNumber, workspace, taskFile, "submit_review")
+			prompt := agent.GetReviewerPrompt(reviewer.Name, pr.Repo, pr.PRNumber, workspace, taskFile, agent.ToolCommand("submit-review"))
 
 			label := fmt.Sprintf("review:%s#%d:%s", pr.Repo, pr.PRNumber, reviewer.Name)
 			_, err = agent.SpawnAgent(label, prompt, reviewer.Name, reviewer.Timeout)
@@ -156,11 +156,11 @@ func (d *Dispatcher) FixOpenPRs(ctx context.Context) (int, error) {
 		}
 
 		prompt := agent.GetPRFixPrompt(agent.DevPromptConfig{
-			AgentID:      devAgent,
-			Repo:         pr.Repo,
-			TaskFile:     taskFile,
-			Workspace:    workspace,
-			GitCommitTool: "git_commit",
+			AgentID:       devAgent,
+			Repo:          pr.Repo,
+			TaskFile:      taskFile,
+			Workspace:     workspace,
+			GitCommitTool: agent.ToolCommand("git-commit"),
 		}, pr.PRNumber, pr.HeadRefName)
 
 		label := fmt.Sprintf("fix:%s#%d", pr.Repo, pr.PRNumber)
@@ -203,7 +203,7 @@ func (d *Dispatcher) FixPRMergeConflicts(ctx context.Context) (int, error) {
 			continue
 		}
 
-		prompt := agent.GetPRConflictsPrompt(devAgent, pr.Repo, pr.HeadRefName, workspace, "git_commit")
+		prompt := agent.GetPRConflictsPrompt(devAgent, pr.Repo, pr.HeadRefName, workspace, agent.ToolCommand("git-commit"))
 
 		label := fmt.Sprintf("conflict:%s#%d", pr.Repo, pr.PRNumber)
 		_, err = agent.SpawnAgent(label, prompt, devAgent, 1800)
@@ -246,11 +246,11 @@ func (d *Dispatcher) FixStatusChecks(ctx context.Context) (int, error) {
 		}
 
 		prompt := agent.GetPRFixStatusChecksPrompt(agent.DevPromptConfig{
-			AgentID:      devAgent,
-			Repo:         pr.Repo,
-			TaskFile:     taskFile,
-			Workspace:    workspace,
-			GitCommitTool: "git_commit",
+			AgentID:       devAgent,
+			Repo:          pr.Repo,
+			TaskFile:      taskFile,
+			Workspace:     workspace,
+			GitCommitTool: agent.ToolCommand("git-commit"),
 		}, pr.PRNumber, pr.HeadRefName)
 
 		label := fmt.Sprintf("status-fix:%s#%d", pr.Repo, pr.PRNumber)

@@ -30,8 +30,8 @@ Steps:
 2. Implement the required changes
 3. Write tests for your changes
 4. Run the tests and ensure they pass
-5. Commit your changes using: %s --agentId %s --branch %s --workspace %s --message "<commit message>"
-6. Open a PR using: %s --agentId %s --repo %s --issue_number %d --head %s --base %s --title "<title>" --body "<description>"
+5. Commit your changes using: %s --agent-id %s --branch %s --workspace %s --message "<commit message>"
+6. Open a PR using: %s --agent-id %s --repo %s --issue-number %d --head %s --base %s --title "<title>" --body "<description>"
 
 Important:
 - Follow existing code patterns and conventions
@@ -57,7 +57,7 @@ Steps:
 1. Read the task file for review context
 2. Make the requested changes
 3. Run tests to verify nothing is broken
-4. Commit using: %s --agentId %s --branch %s --workspace %s --message "<commit message>"
+4. Commit using: %s --agent-id %s --branch %s --workspace %s --message "<commit message>"
 
 Do NOT open a new pull request. The existing PR will be updated by your push.`,
 		prNumber, cfg.Repo,
@@ -78,7 +78,7 @@ Steps:
 3. Edit each conflicted file to resolve logically — preserve intent from both sides
 4. Stage resolved files with git add
 5. Run tests to verify the resolution
-6. Commit using: %s --agentId %s --branch %s --workspace %s --message "resolve merge conflicts"
+6. Commit using: %s --agent-id %s --branch %s --workspace %s --message "resolve merge conflicts"
 
 Important: Do NOT just pick one side. Understand and merge both sets of changes.`,
 		branch, repo,
@@ -99,7 +99,7 @@ Steps:
 2. Identify the root cause of the CI failures
 3. Make targeted fixes — only change what's needed
 4. Run tests locally to verify
-5. Commit using: %s --agentId %s --branch %s --workspace %s --message "fix CI checks"
+5. Commit using: %s --agent-id %s --branch %s --workspace %s --message "fix CI checks"
 
 Do NOT open a new pull request.`,
 		prNumber, cfg.Repo,
