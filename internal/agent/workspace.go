@@ -47,30 +47,29 @@ func EnsureBareClone(ctx context.Context, repo, baseDir string) (string, error) 
 	cloneMu.Lock()
 	defer cloneMu.Unlock()
 
-	if cloneDone[barePath] {
-		return barePath, nil
-	}
-
-	if _, err := os.Stat(barePath); os.IsNotExist(err) {
-		cmd := exec.CommandContext(ctx, "git", "clone", "--bare",
-			fmt.Sprintf("https://github.com/%s.git", repo), barePath)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("bare clone %s: %s: %w", repo, out, err)
+	if !cloneDone[barePath] {
+		if _, err := os.Stat(barePath); os.IsNotExist(err) {
+			cmd := exec.CommandContext(ctx, "git", "clone", "--bare",
+				fmt.Sprintf("https://github.com/%s.git", repo), barePath)
+			if out, err := cmd.CombinedOutput(); err != nil {
+				return "", fmt.Errorf("bare clone %s: %s: %w", repo, out, err)
+			}
 		}
+
+		// Bare clones default refspec to refs/heads/*; fix to refs/remotes/origin/*
+		cmd := exec.CommandContext(ctx, "git", "-C", barePath, "config",
+			"remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*")
+		cmd.Run() // best-effort
+
+		cloneDone[barePath] = true
 	}
 
-	// Bare clones default refspec to refs/heads/*; fix to refs/remotes/origin/*
-	cmd := exec.CommandContext(ctx, "git", "-C", barePath, "config",
-		"remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*")
-	cmd.Run() // best-effort
-
-	// Must happen after refspec fix
-	cmd = exec.CommandContext(ctx, "git", "-C", barePath, "fetch", "--prune", "origin")
+	// Always fetch to pick up new remote branches (e.g. PR branches pushed by dev agents)
+	cmd := exec.CommandContext(ctx, "git", "-C", barePath, "fetch", "--prune", "origin")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("fetch %s: %s: %w", repo, out, err)
 	}
 
-	cloneDone[barePath] = true
 	return barePath, nil
 }
 
