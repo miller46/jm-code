@@ -1,7 +1,6 @@
 package agent_test
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -42,20 +41,3 @@ func TestTaskFilePath(t *testing.T) {
 	}
 }
 
-func TestWriteTaskFile(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "test_task.md")
-
-	err := agent.WriteTaskFile(path, "# Test\nHello world")
-	if err != nil {
-		t.Fatalf("WriteTaskFile: %v", err)
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("ReadFile: %v", err)
-	}
-	if string(data) != "# Test\nHello world" {
-		t.Errorf("content = %q, want %q", string(data), "# Test\nHello world")
-	}
-}

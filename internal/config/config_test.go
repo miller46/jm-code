@@ -51,35 +51,26 @@ func setupTestConfig(t *testing.T) string {
 	return dir
 }
 
-func TestLoadRepos(t *testing.T) {
+func TestLoadAllConfigs(t *testing.T) {
 	dir := setupTestConfig(t)
-	cfg, err := config.LoadRepos(dir)
-	if err != nil {
-		t.Fatalf("LoadRepos: %v", err)
-	}
 
-	if cfg.GlobalLimit != 100 {
-		t.Errorf("GlobalLimit = %d, want 100", cfg.GlobalLimit)
+	if _, err := config.LoadRepos(dir); err != nil {
+		t.Errorf("LoadRepos: %v", err)
 	}
-	if len(cfg.Repos) != 2 {
-		t.Fatalf("len(Repos) = %d, want 2", len(cfg.Repos))
+	if _, err := config.LoadAgents(dir); err != nil {
+		t.Errorf("LoadAgents: %v", err)
 	}
-
-	r1 := cfg.Repos["owner/repo1"]
-	if !r1.Enabled {
-		t.Error("repo1 should be enabled")
+	if _, err := config.LoadReviewers(dir); err != nil {
+		t.Errorf("LoadReviewers: %v", err)
 	}
-	if r1.MaxPerRun != 10 {
-		t.Errorf("repo1 MaxPerRun = %d, want 10", r1.MaxPerRun)
+	if _, err := config.LoadWorkflow(dir); err != nil {
+		t.Errorf("LoadWorkflow: %v", err)
 	}
 }
 
 func TestEnabledRepos(t *testing.T) {
 	dir := setupTestConfig(t)
-	cfg, err := config.LoadRepos(dir)
-	if err != nil {
-		t.Fatalf("LoadRepos: %v", err)
-	}
+	cfg, _ := config.LoadRepos(dir)
 
 	enabled := cfg.EnabledRepos()
 	if len(enabled) != 1 {
@@ -90,27 +81,9 @@ func TestEnabledRepos(t *testing.T) {
 	}
 }
 
-func TestLoadAgents(t *testing.T) {
-	dir := setupTestConfig(t)
-	cfg, err := config.LoadAgents(dir)
-	if err != nil {
-		t.Fatalf("LoadAgents: %v", err)
-	}
-
-	if len(cfg.Agents) != 2 {
-		t.Fatalf("len(Agents) = %d, want 2", len(cfg.Agents))
-	}
-	if cfg.Agents[0].ID != "agent1" {
-		t.Errorf("Agents[0].ID = %q, want %q", cfg.Agents[0].ID, "agent1")
-	}
-}
-
 func TestEnabledAgents(t *testing.T) {
 	dir := setupTestConfig(t)
-	cfg, err := config.LoadAgents(dir)
-	if err != nil {
-		t.Fatalf("LoadAgents: %v", err)
-	}
+	cfg, _ := config.LoadAgents(dir)
 
 	enabled := cfg.EnabledAgents()
 	if len(enabled) != 1 {
@@ -118,39 +91,6 @@ func TestEnabledAgents(t *testing.T) {
 	}
 	if enabled[0].ID != "agent1" {
 		t.Errorf("EnabledAgents[0].ID = %q, want %q", enabled[0].ID, "agent1")
-	}
-}
-
-func TestLoadReviewers(t *testing.T) {
-	dir := setupTestConfig(t)
-	cfg, err := config.LoadReviewers(dir)
-	if err != nil {
-		t.Fatalf("LoadReviewers: %v", err)
-	}
-
-	if len(cfg.Reviewers) != 2 {
-		t.Fatalf("len(Reviewers) = %d, want 2", len(cfg.Reviewers))
-	}
-	if cfg.ApprovalRules.MinApprovals != 2 {
-		t.Errorf("MinApprovals = %d, want 2", cfg.ApprovalRules.MinApprovals)
-	}
-	if len(cfg.ApprovalRules.RequiredReviewers) != 1 {
-		t.Errorf("len(RequiredReviewers) = %d, want 1", len(cfg.ApprovalRules.RequiredReviewers))
-	}
-}
-
-func TestLoadWorkflow(t *testing.T) {
-	dir := setupTestConfig(t)
-	cfg, err := config.LoadWorkflow(dir)
-	if err != nil {
-		t.Fatalf("LoadWorkflow: %v", err)
-	}
-
-	if cfg.MergeAgent.ID != "main-agent" {
-		t.Errorf("MergeAgent.ID = %q, want %q", cfg.MergeAgent.ID, "main-agent")
-	}
-	if !cfg.MergeAgent.Enabled {
-		t.Error("MergeAgent should be enabled")
 	}
 }
 

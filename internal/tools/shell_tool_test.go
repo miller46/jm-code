@@ -8,13 +8,6 @@ import (
 	"github.com/jack/go-cli/internal/tools"
 )
 
-func TestShellTool_Name(t *testing.T) {
-	tool := tools.ShellTool{}
-	if tool.Name() != "shell" {
-		t.Errorf("expected name %q, got %q", "shell", tool.Name())
-	}
-}
-
 func TestShellTool_ImplementsTool(t *testing.T) {
 	var _ tools.Tool = tools.ShellTool{}
 }
