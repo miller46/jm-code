@@ -201,6 +201,20 @@ func ApplyDispatchDedupe(action Action, headSHA string, state DispatchState) Act
 	return action
 }
 
+// ClearStaleDispatchSHAs resets dispatch SHAs for actions where the previous
+// dispatch clearly failed to resolve the issue (e.g. conflict still present,
+// checks still failing). Without this, ApplyDispatchDedupe would suppress
+// re-dispatch forever since the HEAD SHA hasn't changed.
+func ClearStaleDispatchSHAs(action Action, state DispatchState) DispatchState {
+	switch action {
+	case ActionNeedsConflictResolution:
+		state.LastConflictDispatchSHA = ""
+	case ActionNeedsStatusFix:
+		state.LastStatusFixDispatchSHA = ""
+	}
+	return state
+}
+
 func UpdateIteration(action Action, iteration, maxIterations int) (int, Action) {
 	if action == ActionNeedsFix && iteration >= maxIterations {
 		return iteration, ActionMaxIterationsReached
@@ -590,14 +604,16 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 		}
 		iteration, action = UpdateIteration(action, iteration, s.MaxIterations)
 
+		var dispatchState DispatchState
 		if existing != nil {
-			action = ApplyDispatchDedupe(action, pr.HeadRefOid, DispatchState{
+			dispatchState = ClearStaleDispatchSHAs(action, DispatchState{
 				LastReviewDispatchSHA:    existing.LastReviewDispatchSHA,
 				LastFixDispatchSHA:       existing.LastFixDispatchSHA,
 				LastMergeDispatchSHA:     existing.LastMergeDispatchSHA,
 				LastConflictDispatchSHA:  existing.LastConflictDispatchSHA,
 				LastStatusFixDispatchSHA: existing.LastStatusFixDispatchSHA,
 			})
+			action = ApplyDispatchDedupe(action, pr.HeadRefOid, dispatchState)
 		}
 
 		linkedIssue := FindLinkedIssue(pr.Body, pr.Title)
@@ -653,11 +669,11 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 		}
 
 		if existing != nil {
-			item.LastReviewDispatchSHA = existing.LastReviewDispatchSHA
-			item.LastFixDispatchSHA = existing.LastFixDispatchSHA
-			item.LastMergeDispatchSHA = existing.LastMergeDispatchSHA
-			item.LastConflictDispatchSHA = existing.LastConflictDispatchSHA
-			item.LastStatusFixDispatchSHA = existing.LastStatusFixDispatchSHA
+			item.LastReviewDispatchSHA = dispatchState.LastReviewDispatchSHA
+			item.LastFixDispatchSHA = dispatchState.LastFixDispatchSHA
+			item.LastMergeDispatchSHA = dispatchState.LastMergeDispatchSHA
+			item.LastConflictDispatchSHA = dispatchState.LastConflictDispatchSHA
+			item.LastStatusFixDispatchSHA = dispatchState.LastStatusFixDispatchSHA
 			item.LastHeadSHASeen = existing.LastHeadSHASeen
 			item.AssignedAgent = existing.AssignedAgent
 		}

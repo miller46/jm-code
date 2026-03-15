@@ -318,6 +318,10 @@ func TestApplyDispatchDedupe(t *testing.T) {
 		{"review new SHA", github.ActionNeedsReview, "sha2", "sha1", github.ActionNeedsReview},
 		{"fix not dispatched", github.ActionNeedsFix, "sha1", "", github.ActionNeedsFix},
 		{"fix already dispatched", github.ActionNeedsFix, "sha1", "sha1", github.ActionNone},
+		{"conflict not dispatched", github.ActionNeedsConflictResolution, "sha1", "", github.ActionNeedsConflictResolution},
+		{"conflict already dispatched", github.ActionNeedsConflictResolution, "sha1", "sha1", github.ActionNone},
+		{"status_fix not dispatched", github.ActionNeedsStatusFix, "sha1", "", github.ActionNeedsStatusFix},
+		{"status_fix already dispatched", github.ActionNeedsStatusFix, "sha1", "sha1", github.ActionNone},
 		{"none passthrough", github.ActionNone, "sha1", "", github.ActionNone},
 	}
 
@@ -329,6 +333,10 @@ func TestApplyDispatchDedupe(t *testing.T) {
 				dispatched.LastReviewDispatchSHA = tt.lastSHA
 			case github.ActionNeedsFix:
 				dispatched.LastFixDispatchSHA = tt.lastSHA
+			case github.ActionNeedsConflictResolution:
+				dispatched.LastConflictDispatchSHA = tt.lastSHA
+			case github.ActionNeedsStatusFix:
+				dispatched.LastStatusFixDispatchSHA = tt.lastSHA
 			}
 
 			got := github.ApplyDispatchDedupe(tt.action, tt.headSHA, dispatched)
@@ -336,6 +344,39 @@ func TestApplyDispatchDedupe(t *testing.T) {
 				t.Errorf("ApplyDispatchDedupe() = %q, want %q", got, tt.wantAction)
 			}
 		})
+	}
+}
+
+// Regression: PR miller46/jm-api#153 — conflict agent was dispatched but
+// failed to resolve. Same HEAD SHA, PR still CONFLICTING. The stale dispatch
+// SHA must be cleared so the agent is re-dispatched.
+func TestClearStaleDispatchSHAs_ConflictUnresolved(t *testing.T) {
+	state := github.DispatchState{
+		LastConflictDispatchSHA: "sha1",
+	}
+	cleared := github.ClearStaleDispatchSHAs(github.ActionNeedsConflictResolution, state)
+	if cleared.LastConflictDispatchSHA != "" {
+		t.Errorf("LastConflictDispatchSHA should be cleared when conflict is unresolved, got %q", cleared.LastConflictDispatchSHA)
+	}
+}
+
+func TestClearStaleDispatchSHAs_StatusFixUnresolved(t *testing.T) {
+	state := github.DispatchState{
+		LastStatusFixDispatchSHA: "sha1",
+	}
+	cleared := github.ClearStaleDispatchSHAs(github.ActionNeedsStatusFix, state)
+	if cleared.LastStatusFixDispatchSHA != "" {
+		t.Errorf("LastStatusFixDispatchSHA should be cleared when checks still failing, got %q", cleared.LastStatusFixDispatchSHA)
+	}
+}
+
+func TestClearStaleDispatchSHAs_NoOpForOtherActions(t *testing.T) {
+	state := github.DispatchState{
+		LastReviewDispatchSHA: "sha1",
+	}
+	cleared := github.ClearStaleDispatchSHAs(github.ActionNeedsReview, state)
+	if cleared.LastReviewDispatchSHA != "sha1" {
+		t.Errorf("LastReviewDispatchSHA should not be cleared for review action")
 	}
 }
 
