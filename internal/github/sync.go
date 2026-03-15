@@ -125,6 +125,12 @@ func DeterminePRAction(
 		return StatusConflicting, ActionNeedsConflictResolution, false, false, nil
 	}
 
+	// GitHub returns "UNKNOWN" while computing merge state; treat anything
+	// other than "MERGEABLE" as pending review to avoid premature merges.
+	if pr.Mergeable != "MERGEABLE" {
+		return StatusPendingReview, ActionNeedsReview, false, false, nil
+	}
+
 	if HasFailingChecks(pr.StatusChecks) {
 		return StatusChecksFailing, ActionNeedsStatusFix, false, false, nil
 	}
@@ -511,6 +517,7 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 	requiredReviewers := s.RequiredReviewers(repo)
 	rules := s.ApprovalRules(repo)
 	count := 0
+	var seenIDs []string
 
 	for _, issue := range issues {
 		linkedPR := FindLinkedPRs(prs, issue.Number)
@@ -563,6 +570,7 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 			slog.Error("upserting issue", "repo", repo, "number", issue.Number, "err", err)
 			continue
 		}
+		seenIDs = append(seenIDs, itemID)
 		count++
 	}
 
@@ -658,7 +666,15 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 			slog.Error("upserting PR", "repo", repo, "number", pr.Number, "err", err)
 			continue
 		}
+		seenIDs = append(seenIDs, itemID)
 		count++
+	}
+
+	pruned, err := s.Store.PruneStaleItems(repo, seenIDs)
+	if err != nil {
+		slog.Error("pruning stale items", "repo", repo, "err", err)
+	} else if pruned > 0 {
+		slog.Info("pruned stale items", "repo", repo, "count", pruned)
 	}
 
 	slog.Info("sync complete", "repo", repo, "items", count)

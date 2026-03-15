@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -267,6 +268,41 @@ func (s *Store) InsertDispatchEvent(event DispatchEvent) error {
 		event.ItemID, event.StepID, event.HeadSHA, event.Agent, event.Status, event.DispatchedAt,
 	)
 	return err
+}
+
+// PruneStaleItems marks items for a repo that were not seen in the current
+// sync cycle (i.e. not in seenIDs) and still have an active action as
+// action="none". Returns the number of items pruned.
+func (s *Store) PruneStaleItems(repo string, seenIDs []string) (int, error) {
+	if len(seenIDs) == 0 {
+		res, err := s.db.Exec(
+			"UPDATE workflow_items SET action = 'none', updated_at = ? WHERE repo = ? AND action != 'none'",
+			Now(), repo,
+		)
+		if err != nil {
+			return 0, err
+		}
+		n, _ := res.RowsAffected()
+		return int(n), nil
+	}
+
+	placeholders := make([]string, len(seenIDs))
+	args := []any{Now(), repo}
+	for i, id := range seenIDs {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+
+	query := fmt.Sprintf(
+		"UPDATE workflow_items SET action = 'none', updated_at = ? WHERE repo = ? AND action != 'none' AND id NOT IN (%s)",
+		strings.Join(placeholders, ", "),
+	)
+	res, err := s.db.Exec(query, args...)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
 }
 
 func (s *Store) CacheAgentSelection(repo string, number int, agentID string) error {

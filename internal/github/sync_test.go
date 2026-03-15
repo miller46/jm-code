@@ -193,6 +193,65 @@ func TestDeterminePRAction_ChangesRequestedNeedsFix(t *testing.T) {
 	}
 }
 
+// Regression: PR miller46/jm-api#153 — CONFLICTING but fully approved with
+// passing checks. Must return ActionNeedsConflictResolution, never ActionReadyToMerge.
+func TestDeterminePRAction_ConflictingOverridesApproval(t *testing.T) {
+	pr := github.PRDetail{
+		Number:      153,
+		Title:       "Add request-level timeout middleware across API routes",
+		State:       "OPEN",
+		Mergeable:   "CONFLICTING",
+		MergeState:  "DIRTY",
+		HeadRefOid:  "a4d932d5010feed041a43b8566e27db22f3fb1f5",
+		HeadRefName: "feature/issue-151",
+		Body:        "Closes #151",
+		Reviews: []github.Review{
+			{Author: "codesnob", State: github.ReviewApproved, SubmittedAt: "2026-03-14T20:18:56Z", CommitOID: "a4d932d5010feed041a43b8566e27db22f3fb1f5"},
+			{Author: "architect", State: github.ReviewApproved, SubmittedAt: "2026-03-14T20:24:23Z", CommitOID: "a4d932d5010feed041a43b8566e27db22f3fb1f5"},
+		},
+		StatusChecks: []github.StatusCheck{
+			{TypeName: "CheckRun", Name: "quality-gates", Conclusion: "SUCCESS", Status: "COMPLETED"},
+			{TypeName: "CheckRun", Name: "integration-tests", Conclusion: "SUCCESS", Status: "COMPLETED"},
+		},
+	}
+	required := []string{"codesnob", "architect"}
+	rules := &github.ApprovalRules{MinApprovals: 2}
+
+	status, action, allApproved, _, _ := github.DeterminePRAction(pr, nil, required, rules)
+
+	if status != github.StatusConflicting {
+		t.Errorf("status = %q, want %q", status, github.StatusConflicting)
+	}
+	if action != github.ActionNeedsConflictResolution {
+		t.Errorf("action = %q, want %q", action, github.ActionNeedsConflictResolution)
+	}
+	if allApproved {
+		t.Error("allApproved should be false when conflicts take priority")
+	}
+}
+
+func TestDeterminePRAction_UnknownMergeableNotReadyToMerge(t *testing.T) {
+	pr := github.PRDetail{
+		State:      "OPEN",
+		Mergeable:  "UNKNOWN",
+		HeadRefOid: "sha1",
+		Reviews: []github.Review{
+			{Author: "rev1", State: github.ReviewApproved, SubmittedAt: "2025-01-01T00:00:00Z", CommitOID: "sha1"},
+		},
+		StatusChecks: []github.StatusCheck{
+			{TypeName: "CheckRun", Name: "ci", Conclusion: "SUCCESS", Status: "COMPLETED"},
+		},
+	}
+	required := []string{"rev1"}
+	rules := &github.ApprovalRules{MinApprovals: 1}
+
+	_, action, _, _, _ := github.DeterminePRAction(pr, nil, required, rules)
+
+	if action == github.ActionReadyToMerge {
+		t.Errorf("action should NOT be %q when mergeable is UNKNOWN", github.ActionReadyToMerge)
+	}
+}
+
 func TestDeterminePRAction_DefaultNeedsReview(t *testing.T) {
 	pr := github.PRDetail{
 		State:      "OPEN",

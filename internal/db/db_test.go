@@ -333,6 +333,64 @@ func TestCacheAgentSelection(t *testing.T) {
 	}
 }
 
+func TestPruneStaleItems(t *testing.T) {
+	store, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer store.Close()
+
+	// Insert 3 PRs for the same repo: one still open, one stale with active action, one already "none".
+	for _, item := range []db.WorkflowItem{
+		{ID: "r#pr#1", Type: "pr", Repo: "r", Number: 1, Status: "approved", Action: "ready_to_merge"},
+		{ID: "r#pr#2", Type: "pr", Repo: "r", Number: 2, Status: "pending_review", Action: "needs_review"},
+		{ID: "r#pr#3", Type: "pr", Repo: "r", Number: 3, Status: "merged", Action: "none"},
+		{ID: "other#pr#1", Type: "pr", Repo: "other", Number: 1, Status: "approved", Action: "ready_to_merge"},
+	} {
+		if err := store.UpsertWorkflowItem(item); err != nil {
+			t.Fatalf("UpsertWorkflowItem(%s): %v", item.ID, err)
+		}
+	}
+
+	// Only PR #1 was seen in this sync cycle.
+	pruned, err := store.PruneStaleItems("r", []string{"r#pr#1"})
+	if err != nil {
+		t.Fatalf("PruneStaleItems: %v", err)
+	}
+	// PR #2 had an active action and was not seen -> pruned.
+	// PR #3 already had action=none -> not pruned.
+	if pruned != 1 {
+		t.Errorf("pruned = %d, want 1", pruned)
+	}
+
+	// PR #2 should now have action=none.
+	item, err := store.GetWorkflowItem("r#pr#2")
+	if err != nil {
+		t.Fatalf("GetWorkflowItem: %v", err)
+	}
+	if item.Action != "none" {
+		t.Errorf("action = %q, want 'none'", item.Action)
+	}
+
+	// PR #1 (seen) should be unchanged.
+	item, err = store.GetWorkflowItem("r#pr#1")
+	if err != nil {
+		t.Fatalf("GetWorkflowItem: %v", err)
+	}
+	if item.Action != "ready_to_merge" {
+		t.Errorf("action = %q, want 'ready_to_merge'", item.Action)
+	}
+
+	// Other repo should be unaffected.
+	item, err = store.GetWorkflowItem("other#pr#1")
+	if err != nil {
+		t.Fatalf("GetWorkflowItem: %v", err)
+	}
+	if item.Action != "ready_to_merge" {
+		t.Errorf("other repo action = %q, want 'ready_to_merge'", item.Action)
+	}
+}
+
 func TestGetCachedAgentSelection_NotFound(t *testing.T) {
 	store, err := db.Open(":memory:")
 	if err != nil {
