@@ -124,7 +124,19 @@ func (s *Store) migrate() error {
 			UNIQUE(repo, number)
 		);
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Add columns that may not exist on older databases.
+	migrations := []string{
+		"ALTER TABLE workflow_items ADD COLUMN last_dev_dispatch_at TEXT DEFAULT ''",
+	}
+	for _, m := range migrations {
+		s.db.Exec(m) // ignore "duplicate column" errors
+	}
+
+	return nil
 }
 
 func (s *Store) UpsertWorkflowItem(item WorkflowItem) error {
