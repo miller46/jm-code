@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jack/go-cli/internal/config"
 	"github.com/jack/go-cli/internal/db"
@@ -161,7 +162,21 @@ func DeterminePRAction(
 	return StatusPendingReview, ActionNeedsReview, false, false, &eval
 }
 
-func DetermineIssueAction(issue Issue, existing *db.WorkflowItem, linkedPRNumber int) (Status, Action) {
+// IsDevDispatchStale returns true if a dev agent was dispatched more than
+// timeout ago and presumably failed (no PR was created). This allows the
+// system to re-dispatch rather than staying stuck in "in_progress" forever.
+func IsDevDispatchStale(lastDevDispatchAt string, now time.Time, timeout time.Duration) bool {
+	if timeout <= 0 || lastDevDispatchAt == "" {
+		return false
+	}
+	dispatchedAt, err := time.Parse(time.RFC3339, lastDevDispatchAt)
+	if err != nil {
+		return false
+	}
+	return now.Sub(dispatchedAt) > timeout
+}
+
+func DetermineIssueAction(issue Issue, existing *db.WorkflowItem, linkedPRNumber int, devTimeout time.Duration, now time.Time) (Status, Action) {
 	if issue.State == "closed" {
 		return StatusClosed, ActionNone
 	}
@@ -169,6 +184,9 @@ func DetermineIssueAction(issue Issue, existing *db.WorkflowItem, linkedPRNumber
 		return StatusPRCreated, ActionNone
 	}
 	if existing != nil && existing.Status == string(StatusInProgress) {
+		if IsDevDispatchStale(existing.LastDevDispatchAt, now, devTimeout) {
+			return StatusOpen, ActionNeedsDev
+		}
 		return StatusInProgress, ActionNone
 	}
 	return StatusOpen, ActionNeedsDev
@@ -513,6 +531,7 @@ type Syncer struct {
 	RequiredReviewers func(repo string) []string
 	ApprovalRules     func(repo string) *ApprovalRules
 	MaxIterations     int
+	DevTimeout        time.Duration
 }
 
 func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
@@ -542,7 +561,7 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 			slog.Error("reading existing issue", "repo", repo, "number", issue.Number, "err", err)
 			continue
 		}
-		status, action := DetermineIssueAction(issue, existing, linkedPR)
+		status, action := DetermineIssueAction(issue, existing, linkedPR, s.DevTimeout, time.Now().UTC())
 
 		if existing != nil {
 			action = ApplyDispatchDedupe(action, "", DispatchState{})
@@ -578,6 +597,7 @@ func (s *Syncer) SyncRepo(ctx context.Context, repo string) (int, error) {
 			item.LastStatusFixDispatchSHA = existing.LastStatusFixDispatchSHA
 			item.Iteration = existing.Iteration
 			item.AssignedAgent = existing.AssignedAgent
+			item.LastDevDispatchAt = existing.LastDevDispatchAt
 		}
 
 		if err := s.Store.UpsertWorkflowItem(item); err != nil {

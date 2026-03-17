@@ -83,6 +83,7 @@ func (s *Store) migrate() error {
 			max_iterations INTEGER DEFAULT 3,
 
 			assigned_agent TEXT DEFAULT '',
+			last_dev_dispatch_at TEXT DEFAULT '',
 			lock_expires TEXT DEFAULT '',
 
 			created_at TEXT DEFAULT '',
@@ -190,6 +191,14 @@ var dispatchQueries = map[string]string{
 	"merge":      "UPDATE workflow_items SET last_merge_dispatch_sha = ?, updated_at = ? WHERE id = ?",
 	"conflict":   "UPDATE workflow_items SET last_conflict_dispatch_sha = ?, updated_at = ? WHERE id = ?",
 	"status_fix": "UPDATE workflow_items SET last_status_fix_dispatch_sha = ?, updated_at = ? WHERE id = ?",
+}
+
+func (s *Store) SetLastDevDispatchAt(itemID string) error {
+	_, err := s.db.Exec(
+		"UPDATE workflow_items SET last_dev_dispatch_at = ?, updated_at = ? WHERE id = ?",
+		Now(), Now(), itemID,
+	)
+	return err
 }
 
 func (s *Store) MarkDispatched(itemID, dispatchType, headSHA string) error {

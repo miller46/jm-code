@@ -2,7 +2,9 @@ package github_test
 
 import (
 	"testing"
+	"time"
 
+	"github.com/jack/go-cli/internal/db"
 	"github.com/jack/go-cli/internal/github"
 )
 
@@ -271,7 +273,7 @@ func TestDeterminePRAction_DefaultNeedsReview(t *testing.T) {
 
 func TestDetermineIssueAction_Closed(t *testing.T) {
 	issue := github.Issue{State: "closed", Number: 1}
-	status, action := github.DetermineIssueAction(issue, nil, 0)
+	status, action := github.DetermineIssueAction(issue, nil, 0, 0, time.Time{})
 
 	if status != github.StatusClosed {
 		t.Errorf("status = %q, want %q", status, github.StatusClosed)
@@ -283,7 +285,7 @@ func TestDetermineIssueAction_Closed(t *testing.T) {
 
 func TestDetermineIssueAction_HasLinkedPR(t *testing.T) {
 	issue := github.Issue{State: "open", Number: 1}
-	status, action := github.DetermineIssueAction(issue, nil, 42)
+	status, action := github.DetermineIssueAction(issue, nil, 42, 0, time.Time{})
 
 	if status != github.StatusPRCreated {
 		t.Errorf("status = %q, want %q", status, github.StatusPRCreated)
@@ -295,7 +297,7 @@ func TestDetermineIssueAction_HasLinkedPR(t *testing.T) {
 
 func TestDetermineIssueAction_NeedsDev(t *testing.T) {
 	issue := github.Issue{State: "open", Number: 1}
-	status, action := github.DetermineIssueAction(issue, nil, 0)
+	status, action := github.DetermineIssueAction(issue, nil, 0, 0, time.Time{})
 
 	if status != github.StatusOpen {
 		t.Errorf("status = %q, want %q", status, github.StatusOpen)
@@ -490,6 +492,70 @@ func TestReconcileDispatchSHAs(t *testing.T) {
 				t.Errorf("ReconcileDispatchSHAs() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestIsDevDispatchStale(t *testing.T) {
+	now := time.Date(2026, 3, 16, 12, 0, 0, 0, time.UTC)
+	timeout := 45 * time.Minute
+
+	tests := []struct {
+		name               string
+		lastDevDispatchAt  string
+		timeout            time.Duration
+		want               bool
+	}{
+		{"stale after timeout", now.Add(-60 * time.Minute).Format(time.RFC3339), timeout, true},
+		{"not stale within timeout", now.Add(-30 * time.Minute).Format(time.RFC3339), timeout, false},
+		{"exactly at timeout not stale", now.Add(-45 * time.Minute).Format(time.RFC3339), timeout, false},
+		{"empty dispatch time", "", timeout, false},
+		{"zero timeout disables check", now.Add(-60 * time.Minute).Format(time.RFC3339), 0, false},
+		{"corrupt timestamp", "not-a-time", timeout, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := github.IsDevDispatchStale(tt.lastDevDispatchAt, now, tt.timeout)
+			if got != tt.want {
+				t.Errorf("IsDevDispatchStale() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDetermineIssueAction_InProgressStale(t *testing.T) {
+	issue := github.Issue{State: "open", Number: 169}
+	staleTime := time.Now().UTC().Add(-60 * time.Minute).Format(time.RFC3339)
+	existing := &db.WorkflowItem{
+		Status:            string(github.StatusInProgress),
+		LastDevDispatchAt: staleTime,
+	}
+
+	status, action := github.DetermineIssueAction(issue, existing, 0, 45*time.Minute, time.Now().UTC())
+
+	if status != github.StatusOpen {
+		t.Errorf("status = %q, want %q", status, github.StatusOpen)
+	}
+	if action != github.ActionNeedsDev {
+		t.Errorf("action = %q, want %q", action, github.ActionNeedsDev)
+	}
+}
+
+func TestDetermineIssueAction_InProgressNotStale(t *testing.T) {
+	issue := github.Issue{State: "open", Number: 169}
+	recentTime := time.Now().UTC().Add(-10 * time.Minute).Format(time.RFC3339)
+	existing := &db.WorkflowItem{
+		Status:            string(github.StatusInProgress),
+		LastDevDispatchAt: recentTime,
+	}
+
+	status, action := github.DetermineIssueAction(issue, existing, 0, 45*time.Minute, time.Now().UTC())
+
+	if status != github.StatusInProgress {
+		t.Errorf("status = %q, want %q", status, github.StatusInProgress)
+	}
+	if action != github.ActionNone {
+		t.Errorf("action = %q, want %q", action, github.ActionNone)
 	}
 }
 

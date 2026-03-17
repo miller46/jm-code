@@ -42,8 +42,9 @@ type WorkflowItem struct {
 	Iteration     int `json:"iteration"`
 	MaxIterations int `json:"max_iterations"`
 
-	AssignedAgent string `json:"assigned_agent"`
-	LockExpires   string `json:"lock_expires"`
+	AssignedAgent      string `json:"assigned_agent"`
+	LastDevDispatchAt  string `json:"last_dev_dispatch_at"`
+	LockExpires        string `json:"lock_expires"`
 
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
@@ -96,7 +97,7 @@ const workflowItemColumns = `id, type, repo, number, title, github_state, repo_s
 	last_conflict_dispatch_sha, last_status_fix_dispatch_sha, last_head_sha_seen,
 	status_check_rollup, linked_issue_number,
 	iteration, max_iterations,
-	assigned_agent, lock_expires,
+	assigned_agent, last_dev_dispatch_at, lock_expires,
 	created_at, updated_at, last_sync`
 
 // workflowItemPlaceholders is the matching ? list for workflowItemColumns.
@@ -117,7 +118,7 @@ func (w *WorkflowItem) values() []any {
 		w.LastConflictDispatchSHA, w.LastStatusFixDispatchSHA, w.LastHeadSHASeen,
 		w.StatusCheckRollup, w.LinkedIssueNumber,
 		w.Iteration, w.MaxIterations,
-		w.AssignedAgent, w.LockExpires,
+		w.AssignedAgent, w.LastDevDispatchAt, w.LockExpires,
 		w.CreatedAt, w.UpdatedAt, w.LastSync,
 	}
 }
@@ -134,7 +135,7 @@ func (w *WorkflowItem) scanDest() []any {
 		&w.LastConflictDispatchSHA, &w.LastStatusFixDispatchSHA, &w.LastHeadSHASeen,
 		&w.StatusCheckRollup, &w.LinkedIssueNumber,
 		&w.Iteration, &w.MaxIterations,
-		&w.AssignedAgent, &w.LockExpires,
+		&w.AssignedAgent, &w.LastDevDispatchAt, &w.LockExpires,
 		&w.CreatedAt, &w.UpdatedAt, &w.LastSync,
 	}
 }

@@ -71,6 +71,7 @@ func (b *Bot) tick(ctx context.Context) error {
 			return &cfg.ApprovalRules
 		},
 		MaxIterations: 3,
+		DevTimeout:    45 * time.Minute,
 	}
 
 	totalSynced := 0
