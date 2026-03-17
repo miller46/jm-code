@@ -559,6 +559,23 @@ func TestDetermineIssueAction_InProgressNotStale(t *testing.T) {
 	}
 }
 
+func TestDetermineIssueAction_InProgressNoTimestamp(t *testing.T) {
+	issue := github.Issue{State: "open", Number: 169}
+	existing := &db.WorkflowItem{
+		Status:            string(github.StatusInProgress),
+		LastDevDispatchAt: "", // legacy item, no timestamp
+	}
+
+	status, action := github.DetermineIssueAction(issue, existing, 0, 45*time.Minute, time.Now().UTC())
+
+	if status != github.StatusOpen {
+		t.Errorf("status = %q, want %q", status, github.StatusOpen)
+	}
+	if action != github.ActionNeedsDev {
+		t.Errorf("action = %q, want %q", action, github.ActionNeedsDev)
+	}
+}
+
 func TestHasFailingChecks(t *testing.T) {
 	tests := []struct {
 		name   string

@@ -184,6 +184,11 @@ func DetermineIssueAction(issue Issue, existing *db.WorkflowItem, linkedPRNumber
 		return StatusPRCreated, ActionNone
 	}
 	if existing != nil && existing.Status == string(StatusInProgress) {
+		// No dispatch timestamp means a legacy in_progress item from before
+		// we started tracking — treat it as stale so it gets re-dispatched.
+		if existing.LastDevDispatchAt == "" {
+			return StatusOpen, ActionNeedsDev
+		}
 		if IsDevDispatchStale(existing.LastDevDispatchAt, now, devTimeout) {
 			return StatusOpen, ActionNeedsDev
 		}
