@@ -19,6 +19,8 @@ type Bot struct {
 	Store     *db.Store
 	ConfigDir string
 	Interval  time.Duration
+
+	dispatcher *workflow.Dispatcher
 }
 
 func (b *Bot) Run(ctx context.Context) error {
@@ -102,12 +104,14 @@ func (b *Bot) tick(ctx context.Context) error {
 
 	slog.Info("sync complete", "items", totalSynced, "errors", len(syncErrors))
 
-	dispatcher := &workflow.Dispatcher{
-		Store:     b.Store,
-		ConfigDir: b.ConfigDir,
+	if b.dispatcher == nil {
+		b.dispatcher = &workflow.Dispatcher{
+			Store:     b.Store,
+			ConfigDir: b.ConfigDir,
+		}
 	}
 
-	if err := dispatcher.RunAll(ctx); err != nil {
+	if err := b.dispatcher.RunAll(ctx); err != nil {
 		return fmt.Errorf("dispatch: %w", err)
 	}
 

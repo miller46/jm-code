@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"sync"
 
 	"github.com/jack/go-cli/internal/agent"
 	"github.com/jack/go-cli/internal/config"
@@ -16,6 +17,8 @@ import (
 type Dispatcher struct {
 	Store     *db.Store
 	ConfigDir string
+
+	mu sync.Mutex
 }
 
 func (d *Dispatcher) DevOpenIssues(ctx context.Context) (int, error) {
@@ -66,7 +69,7 @@ func (d *Dispatcher) DevOpenIssues(ctx context.Context) (int, error) {
 		})
 
 		label := fmt.Sprintf("dev:%s#%d", issue.Repo, issue.IssueNumber)
-		_, err = agent.SpawnAgent(label, prompt, selectedAgent, 1800)
+		_, err = agent.SpawnAgent(ctx, label, prompt, selectedAgent, 1800)
 		if err != nil {
 			slog.Error("spawning dev agent", "issue", issue.IssueNumber, "err", err)
 			continue
@@ -113,7 +116,7 @@ func (d *Dispatcher) ReviewOpenPRs(ctx context.Context) (int, error) {
 			prompt := agent.GetReviewerPrompt(reviewer.Agent, pr.Repo, pr.PRNumber, workspace, taskFile, agent.ToolCommand("submit-review"))
 
 			label := fmt.Sprintf("review:%s#%d:%s", pr.Repo, pr.PRNumber, reviewer.Name)
-			_, err = agent.SpawnAgent(label, prompt, reviewer.Agent, reviewer.Timeout)
+			_, err = agent.SpawnAgent(ctx, label, prompt, reviewer.Agent, reviewer.Timeout)
 			if err != nil {
 				slog.Error("spawning reviewer", "pr", pr.PRNumber, "reviewer", reviewer.Name, "err", err)
 				continue
@@ -185,7 +188,7 @@ func (d *Dispatcher) FixOpenPRs(ctx context.Context) (int, error) {
 		}, pr.PRNumber, pr.HeadRefName)
 
 		label := fmt.Sprintf("fix:%s#%d", pr.Repo, pr.PRNumber)
-		_, err = agent.SpawnAgent(label, prompt, devAgent, 1800)
+		_, err = agent.SpawnAgent(ctx, label, prompt, devAgent, 1800)
 		if err != nil {
 			slog.Error("spawning fix agent", "pr", pr.PRNumber, "err", err)
 			continue
@@ -228,7 +231,7 @@ func (d *Dispatcher) FixPRMergeConflicts(ctx context.Context) (int, error) {
 		prompt := agent.GetPRConflictsPrompt(devAgent, pr.Repo, pr.HeadRefName, workspace, agent.ToolCommand("git-commit"))
 
 		label := fmt.Sprintf("conflict:%s#%d", pr.Repo, pr.PRNumber)
-		_, err = agent.SpawnAgent(label, prompt, devAgent, 1800)
+		_, err = agent.SpawnAgent(ctx, label, prompt, devAgent, 1800)
 		if err != nil {
 			slog.Error("spawning conflict agent", "pr", pr.PRNumber, "err", err)
 			continue
@@ -277,7 +280,7 @@ func (d *Dispatcher) FixStatusChecks(ctx context.Context) (int, error) {
 		}, pr.PRNumber, pr.HeadRefName)
 
 		label := fmt.Sprintf("status-fix:%s#%d", pr.Repo, pr.PRNumber)
-		_, err = agent.SpawnAgent(label, prompt, devAgent, 1800)
+		_, err = agent.SpawnAgent(ctx, label, prompt, devAgent, 1800)
 		if err != nil {
 			slog.Error("spawning status-fix agent", "pr", pr.PRNumber, "err", err)
 			continue
@@ -328,6 +331,12 @@ func (d *Dispatcher) MergePRs(ctx context.Context) (int, error) {
 }
 
 func (d *Dispatcher) RunAll(ctx context.Context) error {
+	if !d.mu.TryLock() {
+		slog.Warn("dispatch already running, skipping this cycle")
+		return nil
+	}
+	defer d.mu.Unlock()
+
 	steps := []struct {
 		name string
 		fn   func(context.Context) (int, error)

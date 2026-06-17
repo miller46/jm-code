@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +12,8 @@ import (
 	"strings"
 	"time"
 )
+
+var HTTPClientTimeout = 60 * time.Second
 
 func GatewayURL() string {
 	if url := os.Getenv("OPENCLAW_GATEWAY_URL"); url != "" {
@@ -52,7 +55,7 @@ func (r *SpawnResult) ErrorString() string {
 	return string(r.Error)
 }
 
-func SpawnAgent(label, prompt, agentID string, timeout int) (*SpawnResult, error) {
+func SpawnAgent(ctx context.Context, label, prompt, agentID string, timeout int) (*SpawnResult, error) {
 	if timeout == 0 {
 		timeout = 1800
 	}
@@ -82,7 +85,7 @@ func SpawnAgent(label, prompt, agentID string, timeout int) (*SpawnResult, error
 	}
 
 	url := GatewayURL() + "/tools/invoke"
-	req, err := http.NewRequest("POST", url, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -90,7 +93,7 @@ func SpawnAgent(label, prompt, agentID string, timeout int) (*SpawnResult, error
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	client := &http.Client{Timeout: time.Duration(timeout+60) * time.Second}
+	client := &http.Client{Timeout: HTTPClientTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("spawning agent: %w", err)
