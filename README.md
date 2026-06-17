@@ -188,38 +188,6 @@ Configured in `reviewers.json` under `approval_rules`:
 }
 ```
 
-## Project Structure
-
-```
-cmd/
-  root.go                    # CLI entry point (Cobra), flags, graceful shutdown
-internal/
-  bot/bot.go                 # Main sync-dispatch loop
-  config/config.go           # JSON config loaders with per-repo overrides
-  db/
-    db.go                    # SQLite store (WAL mode)
-    models.go                # WorkflowItem, dispatch events, agent selections
-  github/
-    sync.go                  # State machine (GitHub state -> workflow state -> action)
-    types.go                 # Type definitions
-    merge.go                 # PR merge logic
-  agent/
-    agent.go                 # Agent interface
-    dev.go                   # Dev agent prompt templates
-    review.go                # Reviewer prompt templates
-    spawn.go                 # OpenClaw gateway HTTP client, agent selection heuristic
-    workspace.go             # Bare clone, worktree, task file management
-  workflow/tasks.go          # Dispatches agents based on workflow actions
-  tools/
-    tool.go                  # Tool interface
-    git_commit.go            # Commit, rebase, push
-    submit_pr.go             # Create PR via gh CLI
-    submit_review.go         # Submit PR review via gh CLI
-    shell_tool.go            # Bash execution tool
-    issues.go                # Issue queue API (DB queries)
-    prs.go                   # PR queue API (DB queries)
-main.go                      # Entry point
-```
 
 ## Gotchas
 
